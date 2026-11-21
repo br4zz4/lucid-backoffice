@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            ruby: "3.2"
+          - os: ubuntu-latest
+            ruby: "3.4"
+          - os: macos-latest
+            ruby: "3.4"
+    runs-on: ${{ matrix.os }}
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/lucid_backoffice_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: postgres (linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo systemctl start postgresql
+          sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres'"
+      - name: postgres (macos)
+        if: runner.os == 'macOS'
+        run: |
+          brew install postgresql@16
+          brew services start postgresql@16
+          echo "/opt/homebrew/opt/postgresql@16/bin" >> "$GITHUB_PATH"
+          for i in $(seq 1 30); do /opt/homebrew/opt/postgresql@16/bin/pg_isready && break; sleep 1; done
+          /opt/homebrew/opt/postgresql@16/bin/createuser -s postgres || true
+          /opt/homebrew/opt/postgresql@16/bin/psql -d postgres -c "ALTER USER postgres PASSWORD 'postgres'"
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: Run tests
+        run: bundle exec rake test
