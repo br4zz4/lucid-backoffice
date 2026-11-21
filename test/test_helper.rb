@@ -1,5 +1,6 @@
 require "action_controller"
 require "lucid/backoffice"
+require "active_support/testing/time_helpers"
 require "minitest/autorun"
 require "tmpdir"
 
@@ -35,6 +36,17 @@ ActiveRecord::Schema.define do
     t.inet :ip_address
     t.string :user_agent
     t.datetime :occurred_at, null: false
+    t.datetime :created_at, null: false
+  end
+
+  create_table :lucid_backoffice_reveals, force: true do |t|
+    t.string :operator_type, null: false
+    t.bigint :operator_id, null: false
+    t.string :tenant_identifier
+    t.string :category, null: false
+    t.text :reason, null: false
+    t.datetime :expires_at, null: false
+    t.datetime :revoked_at
     t.datetime :created_at, null: false
   end
 
