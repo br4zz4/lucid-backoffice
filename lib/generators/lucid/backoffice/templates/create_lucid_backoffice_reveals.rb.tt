@@ -1,0 +1,17 @@
+class CreateLucidBackofficeReveals < ActiveRecord::Migration[<%= ActiveRecord::Migration.current_version %>]
+<%= "  tenancy :shared\n\n" if defined?(Lucid::Tenancy) -%>
+  def change
+    create_table :lucid_backoffice_reveals do |t|
+      t.string :operator_type, null: false
+      t.bigint :operator_id, null: false
+      t.string :tenant_identifier
+      t.string :category, null: false
+      t.text :reason, null: false
+      t.datetime :expires_at, null: false
+      t.datetime :revoked_at
+      t.datetime :created_at, null: false
+    end
+    add_index :lucid_backoffice_reveals, %i[operator_type operator_id tenant_identifier category]
+    add_index :lucid_backoffice_reveals, :expires_at
+  end
+end

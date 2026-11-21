@@ -14,6 +14,9 @@ require "lucid/backoffice/tenancy"
 require "lucid/backoffice/catalog"
 require "lucid/backoffice/records"
 require "lucid/backoffice/resource"
+require "lucid/backoffice/authorization"
+require "lucid/backoffice/reveal"
+require "lucid/backoffice/panel_activity"
 require "lucid/backoffice/railtie" if defined?(Rails::Railtie)
 
 module Lucid
