@@ -1,0 +1,8 @@
+# table.column: category. A column not listed here is unclassified and masked.
+# id, *_id, *_type, created_at and updated_at are public by convention.
+# Categories: public contact documents minors financial free_text unclassified
+#
+# users:
+#   email: contact
+#   name: contact
+#   role: public

@@ -1,0 +1,32 @@
+Lucid::Backoffice.configure do |config|
+  # Who is the operator, and how to require one. The back office does not log anybody in.
+  config.current_operator = ->(controller) { controller.current_user }
+  config.authenticate = ->(controller) { controller.authenticate_user! }
+  # config.sign_out_path = -> { main_app.destroy_user_session_path }
+  # config.current_actor = ->(controller) { controller.current_user }
+
+  # Which permission an operator has. Denies everything until you answer. The permissions asked are
+  # :view_dashboard, :view_tenant, :browse, :reveal and :view_activity, plus those of plugins and screens.
+  #
+  # Plain Ruby:
+  #   config.authorize = ->(operator, permission, context) { operator.superadmin? || %i[view_dashboard browse].include?(permission) }
+  #
+  # CanCanCan:
+  #   config.authorize = ->(operator, permission, context) { Ability.new(operator).can?(permission, context[:model] || :backoffice) }
+  config.authorize = ->(_operator, _permission, _context) { false }
+
+  # config.tenancy = :lucid_tenancy # needs: require "lucid/backoffice/adapters/lucid_tenancy"
+  # config.hidden_tables = %w[]
+  # config.reveal_duration = 15.minutes
+  # config.reveal_reason_min = 10
+  # config.activity_retention = 6.months
+  # config.page_size = 25
+  # config.title = "Back office"
+  # config.brand_color = "#4f46e5"
+
+  config.classification_path = Rails.root.join("config/data_classification.yml").to_s
+end
+
+# Optional integrations, loaded only when you require them:
+# require "lucid/backoffice/integrations/lucid_case"  # one activity event per Lucid::Case Command
+# require "lucid/backoffice/integrations/active_job"  # actor and request id carried into jobs
