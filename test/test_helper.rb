@@ -96,3 +96,18 @@ class ActivityTest < BackofficeTest
     Lucid::Backoffice::Activity::Event.order(:id).to_a
   end
 end
+
+class IntegrationTest < ActivityTest
+  def setup
+    super
+    @observers_before = Lucid::Case.configuration.events.observers.dup if defined?(Lucid::Case)
+  end
+
+  def teardown
+    if defined?(Lucid::Case)
+      Lucid::Case.configuration.events.observers.replace(@observers_before)
+      Lucid::Case.configuration.events.recording = :disabled
+    end
+    super
+  end
+end
