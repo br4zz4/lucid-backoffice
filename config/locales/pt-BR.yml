@@ -1,0 +1,37 @@
+pt-BR:
+  date:
+    formats:
+      default: "%d/%m/%Y"
+      short: "%d/%m"
+  time:
+    formats:
+      default: "%d/%m/%Y %H:%M"
+      short: "%d/%m %H:%M"
+  lucid_backoffice:
+    data: Dados
+    activity: Atividade
+    sign_out: Sair
+    tenants: Tenants
+    week: Semana
+    month: Mês
+    masked: Mascarado
+    schema_health: Saúde do schema
+    schema_missing: Schema não encontrado
+    schema_ok: Schema em dia
+    missing_table: "Tabela faltando %{table}"
+    extra_table: "Tabela extra %{table}"
+    pending_version: "Migration pendente %{version}"
+    ignored_filters: "Filtros ignorados: %{filters}"
+    reveal_title: Revelar dados
+    reveal: Revelar
+    end_reveal: "Encerrar revelação de %{category}"
+    reason: Motivo
+    revealed: Dados revelados
+    revoked: Revelação encerrada
+    tenant: Tenant
+    actor: Ator
+    name: Nome
+    outcome: Resultado
+    when: Quando
+    subjects: Sujeitos
+    filter: Filtrar

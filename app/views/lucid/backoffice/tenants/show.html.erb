@@ -1,0 +1,21 @@
+<h1><%= tenancy.label(@tenant) %> <small><%= tenancy.identifier(@tenant) %></small></h1>
+<p><a href="<%= tenant_data_path(tenant_id: tenancy.identifier(@tenant)) %>"><%= t("lucid_backoffice.data") %></a></p>
+<% if @health %>
+  <section class="lb-section">
+    <h2><%= t("lucid_backoffice.schema_health") %></h2>
+    <% if !@health.provisioned? %>
+      <p><%= t("lucid_backoffice.schema_missing") %></p>
+    <% elsif @health.ok? %>
+      <p><%= t("lucid_backoffice.schema_ok") %></p>
+    <% else %>
+      <ul>
+        <% @health.missing_tables.each do |table| %><li><%= t("lucid_backoffice.missing_table", table: table) %></li><% end %>
+        <% @health.extra_tables.each do |table| %><li><%= t("lucid_backoffice.extra_table", table: table) %></li><% end %>
+        <% @health.column_drift.each do |drift| %><li><%= drift.table %>.<%= drift.column %>: <%= drift.expected || "—" %> → <%= drift.actual || "—" %></li><% end %>
+        <% @health.pending_versions.each do |version| %><li><%= t("lucid_backoffice.pending_version", version: version) %></li><% end %>
+      </ul>
+    <% end %>
+  </section>
+<% end %>
+<% @sections.each do |section| %><%= render section.partial, tenant: @tenant %><% end %>
+<%= render "lucid/backoffice/ui/reveal_toggle", tenant: @tenant, reveals: @reveals %>

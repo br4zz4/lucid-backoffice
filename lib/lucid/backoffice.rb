@@ -17,7 +17,11 @@ require "lucid/backoffice/resource"
 require "lucid/backoffice/authorization"
 require "lucid/backoffice/reveal"
 require "lucid/backoffice/panel_activity"
-require "lucid/backoffice/railtie" if defined?(Rails::Railtie)
+require "lucid/backoffice/registry"
+require "action_controller"
+require "action_view"
+require "rails/engine"
+require "lucid/backoffice/engine"
 
 module Lucid
   # An operation panel for Rails apps, masked by default.
@@ -36,11 +40,17 @@ module Lucid
         configuration
       end
 
+      # Registers menu items, cards, tenant sections and permissions. The app and plugins use the same API.
+      def register(name, &block)
+        Registry.register(name, &block)
+      end
+
       def reset_configuration!
         @configuration = Configuration.new
         Classification.reset!
         Tenancy.reset!
         Resource.reset!
+        Registry.reset!
       end
     end
   end

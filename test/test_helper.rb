@@ -123,3 +123,5 @@ class IntegrationTest < ActivityTest
     super
   end
 end
+
+require "dummy_app"

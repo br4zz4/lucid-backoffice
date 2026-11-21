@@ -1,0 +1,29 @@
+en:
+  lucid_backoffice:
+    data: Data
+    activity: Activity
+    sign_out: Sign out
+    tenants: Tenants
+    week: Week
+    month: Month
+    masked: Masked
+    schema_health: Schema health
+    schema_missing: Schema not found
+    schema_ok: Schema up to date
+    missing_table: "Missing table %{table}"
+    extra_table: "Extra table %{table}"
+    pending_version: "Pending migration %{version}"
+    ignored_filters: "Ignored filters: %{filters}"
+    reveal_title: Reveal data
+    reveal: Reveal
+    end_reveal: "End %{category} reveal"
+    reason: Reason
+    revealed: Data revealed
+    revoked: Reveal ended
+    tenant: Tenant
+    actor: Actor
+    name: Name
+    outcome: Outcome
+    when: When
+    subjects: Subjects
+    filter: Filter

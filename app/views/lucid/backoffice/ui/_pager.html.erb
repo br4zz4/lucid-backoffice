@@ -1,0 +1,7 @@
+<% if pages > 1 %>
+  <nav class="lb-pager">
+    <% (1..pages).each do |n| %>
+      <% if n == page %><strong><%= n %></strong><% else %><a href="<%= url_for(request.query_parameters.merge(page: n)) %>"><%= n %></a><% end %>
+    <% end %>
+  </nav>
+<% end %>

@@ -1,0 +1,13 @@
+<h1><%= params[:table] %> <small><%= @page.total %></small></h1>
+<% if @page.ignored_filters.any? %><p class="lb-flash lb-flash-warn"><%= t("lucid_backoffice.ignored_filters", filters: @page.ignored_filters.join(", ")) %></p><% end %>
+<%= render "lucid/backoffice/ui/table", columns: @page.columns, rows: @page.rows,
+      link_to_row: ->(cell, cells) {
+        id = cells.find { |c| c.column.name == "id" }&.value
+        if cell.column.name == "id"
+          link_to cell.value, (current_tenant ? tenant_record_path(tenant_id: tenancy.identifier(current_tenant), table: params[:table], id: id) : record_path(table: params[:table], id: id))
+        else
+          render("lucid/backoffice/ui/value", cell: cell)
+        end
+      } %>
+<%= render "lucid/backoffice/ui/pager", page: @page.page, pages: @page.pages %>
+<%= render "lucid/backoffice/ui/reveal_toggle", tenant: current_tenant, reveals: @reveals %>
