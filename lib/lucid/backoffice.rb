@@ -10,6 +10,10 @@ require "lucid/backoffice/mask"
 require "lucid/backoffice/current"
 require "lucid/backoffice/context"
 require "lucid/backoffice/activity"
+require "lucid/backoffice/tenancy"
+require "lucid/backoffice/catalog"
+require "lucid/backoffice/records"
+require "lucid/backoffice/resource"
 require "lucid/backoffice/railtie" if defined?(Rails::Railtie)
 
 module Lucid
@@ -32,6 +36,8 @@ module Lucid
       def reset_configuration!
         @configuration = Configuration.new
         Classification.reset!
+        Tenancy.reset!
+        Resource.reset!
       end
     end
   end
