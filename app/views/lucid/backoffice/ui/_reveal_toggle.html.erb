@@ -1,0 +1,20 @@
+<% categories = Lucid::Backoffice.configuration.categories - ["public"] %>
+<% if allowed?(:reveal, { tenant: tenant }) %>
+  <section class="lb-reveal">
+    <h3><%= t("lucid_backoffice.reveal_title") %></h3>
+    <% categories.each do |category| %>
+      <% active = reveals.find { |reveal| reveal.category == category } %>
+      <% if active %>
+        <%= button_to t("lucid_backoffice.end_reveal", category: category), reveal_path(active), method: :delete, class: "lb-button lb-button-danger" %>
+      <% else %>
+        <%= form_with url: reveals_path, method: :post, class: "lb-reason-form", data: { lb_reason_form: true } do |f| %>
+          <%= hidden_field_tag :category, category %>
+          <%= hidden_field_tag :tenant_id, tenant && tenancy.identifier(tenant) %>
+          <label><%= category %></label>
+          <%= text_field_tag :reason, nil, placeholder: t("lucid_backoffice.reason"), minlength: Lucid::Backoffice.configuration.reveal_reason_min, required: true, data: { lb_reason: true } %>
+          <%= submit_tag t("lucid_backoffice.reveal"), class: "lb-button", disabled: true, data: { lb_submit: true } %>
+        <% end %>
+      <% end %>
+    <% end %>
+  </section>
+<% end %>

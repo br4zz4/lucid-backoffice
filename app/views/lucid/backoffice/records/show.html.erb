@@ -1,0 +1,7 @@
+<h1><%= params[:table] %> #<%= params[:id] %></h1>
+<dl class="lb-detail">
+  <% @cells.each do |cell| %>
+    <dt><%= cell.column.name %> <% unless cell.column.category == "public" %><small><%= cell.column.category %></small><% end %></dt>
+    <dd><%= render "lucid/backoffice/ui/value", cell: cell %></dd>
+  <% end %>
+</dl>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>" class="lb">
+  <head>
+    <title><%= Lucid::Backoffice.configuration.title %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex">
+    <%= csrf_meta_tags %>
+    <style>:root { --lb-brand: <%= Lucid::Backoffice.configuration.brand_color || "#4f46e5" %>; }</style>
+    <link rel="stylesheet" href="<%= lb_routes.lb_asset_path(name: "lucid_backoffice.css") %>">
+    <script src="<%= lb_routes.lb_asset_path(name: "lucid_backoffice.js") %>" defer></script>
+  </head>
+  <body class="lb-body">
+    <nav class="lb-nav">
+      <a class="lb-brand" href="<%= lb_routes.root_path %>"><%= Lucid::Backoffice.configuration.title %></a>
+      <% if allowed?(:browse) %><a href="<%= lb_routes.data_path %>"><%= t("lucid_backoffice.data") %></a><% end %>
+      <% if allowed?(:view_activity) %><a href="<%= lb_routes.activity_path %>"><%= t("lucid_backoffice.activity") %></a><% end %>
+      <% lucid_backoffice_menu.each do |item| %><a href="<%= item.path %>"><%= item.label %></a><% end %>
+      <% if Lucid::Backoffice.configuration.sign_out_path %>
+        <a class="lb-signout" href="<%= instance_exec(&Lucid::Backoffice.configuration.sign_out_path) %>"><%= t("lucid_backoffice.sign_out") %></a>
+      <% end %>
+    </nav>
+    <main class="lb-main">
+      <% if notice %><p class="lb-flash lb-flash-ok"><%= notice %></p><% end %>
+      <% if alert %><p class="lb-flash lb-flash-error"><%= alert %></p><% end %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,30 @@
+<h1><%= t("lucid_backoffice.activity") %></h1>
+<%= form_with url: activity_path, method: :get, class: "lb-filters" do %>
+  <%= text_field_tag :tenant, params[:tenant], placeholder: t("lucid_backoffice.tenant") %>
+  <%= text_field_tag :actor_type, params[:actor_type], placeholder: t("lucid_backoffice.actor") %>
+  <%= text_field_tag :name, params[:name], placeholder: t("lucid_backoffice.name") %>
+  <%= text_field_tag :outcome, params[:outcome], placeholder: t("lucid_backoffice.outcome") %>
+  <%= select_tag :period, options_for_select(%w[24h 7d 30d], params[:period] || "7d") %>
+  <%= submit_tag t("lucid_backoffice.filter"), class: "lb-button" %>
+<% end %>
+<div class="lb-table-wrap">
+  <table class="lb-table">
+    <thead><tr><th><%= t("lucid_backoffice.when") %></th><th><%= t("lucid_backoffice.name") %></th><th><%= t("lucid_backoffice.actor") %></th><th><%= t("lucid_backoffice.tenant") %></th><th><%= t("lucid_backoffice.outcome") %></th><th><%= t("lucid_backoffice.subjects") %></th><th><%= t("lucid_backoffice.reason") %></th></tr></thead>
+    <tbody>
+      <% @groups.each do |request_id, events| %>
+        <% events.each_with_index do |event, index| %>
+          <tr class="<%= "lb-grouped" if events.size > 1 %>">
+            <td><%= l(event.occurred_at, format: :short) %></td>
+            <td><%= event.name %></td>
+            <td><%= event.actor_type %><%= " ##{event.actor_id}" if event.actor_id %></td>
+            <td><%= event.tenant_identifier %></td>
+            <td><%= event.outcome %></td>
+            <td><%= Array(event.subjects).map { |s| [s["type"], s["name"], s["id"]].compact.join(" ") }.join(", ") %></td>
+            <td><%= event.reason %></td>
+          </tr>
+        <% end %>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+<%= render "lucid/backoffice/ui/pager", page: @page, pages: @pages %>
