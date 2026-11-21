@@ -7,6 +7,10 @@ require "lucid/backoffice/errors"
 require "lucid/backoffice/configuration"
 require "lucid/backoffice/classification"
 require "lucid/backoffice/mask"
+require "lucid/backoffice/current"
+require "lucid/backoffice/context"
+require "lucid/backoffice/activity"
+require "lucid/backoffice/railtie" if defined?(Rails::Railtie)
 
 module Lucid
   # An operation panel for Rails apps, masked by default.
