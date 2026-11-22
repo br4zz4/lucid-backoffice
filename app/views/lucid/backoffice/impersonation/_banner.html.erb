@@ -1,0 +1,16 @@
+<% remaining = [(impersonation.expires_at - Time.current).to_i, 0].max %>
+<div class="lb-impersonation-banner" style="position:sticky;top:0;z-index:1000;background:#7f1d1d;color:#fff;padding:.5rem 1rem;display:flex;gap:1rem;align-items:center;font-family:system-ui,sans-serif">
+  <span><%= t("lucid_backoffice.impersonating", user: "#{impersonation.user_type} ##{impersonation.user_id}", tenant: impersonation.tenant_identifier.to_s) %></span>
+  <strong data-lb-countdown="<%= remaining %>"><%= format("%02d:%02d", remaining / 60, remaining % 60) %></strong>
+  <%= button_to t("lucid_backoffice.impersonation_exit"), "/lucid_backoffice/impersonation", method: :delete, style: "margin-left:auto" %>
+</div>
+<script>
+  (function () {
+    var el = document.currentScript.previousElementSibling.querySelector("[data-lb-countdown]");
+    var left = parseInt(el.getAttribute("data-lb-countdown"), 10);
+    setInterval(function () {
+      left = Math.max(left - 1, 0);
+      el.textContent = ("0" + Math.floor(left / 60)).slice(-2) + ":" + ("0" + (left % 60)).slice(-2);
+    }, 1000);
+  })();
+</script>
