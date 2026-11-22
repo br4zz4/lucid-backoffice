@@ -37,6 +37,27 @@ ActiveRecord::Schema.define do
     t.string :user_agent
     t.datetime :occurred_at, null: false
     t.datetime :created_at, null: false
+    t.bigint :impersonation_id
+  end
+
+  create_table :lucid_backoffice_impersonations, force: true do |t|
+    t.string :operator_type, null: false
+    t.bigint :operator_id, null: false
+    t.string :tenant_identifier
+    t.string :user_type, null: false
+    t.bigint :user_id, null: false
+    t.text :reason, null: false
+    t.jsonb :metadata, null: false, default: {}
+    t.datetime :started_at, null: false
+    t.datetime :expires_at, null: false
+    t.datetime :entered_at
+    t.datetime :ended_at
+    t.string :end_reason
+    t.datetime :created_at, null: false
+  end
+
+  create_table :impersonation_operators, force: true do |t|
+    t.string :name
   end
 
   create_table :lucid_backoffice_reveals, force: true do |t|
@@ -58,6 +79,59 @@ ActiveRecord::Schema.define do
 end
 
 class Widget < ActiveRecord::Base
+end
+
+class ImpersonationOperator < ActiveRecord::Base
+end
+
+ImpersonatedUser = Struct.new(:id)
+
+module ImpersonationSupport
+  REASON = "investigar chamado 4321".freeze
+  USER_ID = 7
+  TENANT = "alfa".freeze
+
+  def configure_impersonation(permissions: %i[impersonate], duration: 30 * 60)
+    @signed_in = []
+    @signed_out = []
+    signed_in = @signed_in
+    signed_out = @signed_out
+    Lucid::Backoffice.configure do |config|
+      config.current_operator = ->(_request) { :operator }
+      config.authenticate = ->(_request) { true }
+      config.authorize = ->(_operator, permission, _context) { permissions.include?(permission) }
+      config.impersonation.find_user = ->(_tenant, id) { id.to_i == USER_ID ? ImpersonatedUser.new(USER_ID) : nil }
+      config.impersonation.sign_in = ->(controller, user) { signed_in << user.id && controller.session[:signed_in_user] = user.id }
+      config.impersonation.sign_out = ->(_controller) { signed_out << true }
+      config.impersonation.entry_url = ->(tenant) { "http://#{tenant}.example.test" }
+      config.impersonation.return_url = ->(_impersonation) { "http://admin.example.test/backoffice" }
+      config.impersonation.tenant_for_request = ->(request) { request.host.split(".").first }
+      config.impersonation.duration = duration
+    end
+  end
+
+  def create_operator(name = "operador")
+    ImpersonationOperator.create!(name: name)
+  end
+
+  def start_impersonation(operator, user_id: USER_ID, reason: REASON, tenant: TENANT, metadata: {})
+    Lucid::Backoffice::Impersonation.start(operator: operator, user_id: user_id, reason: reason, tenant: tenant, metadata: metadata)
+  end
+
+  def token_from(url)
+    Rack::Utils.parse_query(URI.parse(url).query).fetch("token")
+  end
+
+  def reset_impersonation_data
+    Lucid::Backoffice::Current.reset
+    Lucid::Backoffice::Activity::Event.unscoped.delete_all
+    Lucid::Backoffice::Impersonation.delete_all
+    ImpersonationOperator.delete_all
+  end
+
+  def impersonation_events(name)
+    Lucid::Backoffice::Activity::Event.where(name: name).order(:id).to_a
+  end
 end
 
 class BackofficeTest < Minitest::Test

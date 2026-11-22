@@ -19,11 +19,18 @@ module Lucid
       # Activity trail.
       attr_accessor :activity_retention, :activity_purge_batch
 
+      # Impersonation hooks and limits. The app supplies how to find and sign in a user.
+      Impersonation = Struct.new(:find_user, :sign_in, :sign_out, :entry_url, :return_url, :duration, :tenant_for_request, :read_only_except)
+
       # Appearance.
       attr_accessor :title, :layout, :terms
       attr_reader :brand_color, :theme, :stylesheet, :extra_stylesheets
 
       STYLESHEET_REFERENCE = %r{\A(/(?!/)|https?://)[^\s"'<>\\]*\z}
+
+      def impersonation
+        @impersonation ||= Impersonation.new(nil, nil, nil, nil, nil, 30 * 60, nil, [])
+      end
 
       def initialize
         @authorize = ->(_operator, _permission, _context) { false }
