@@ -27,21 +27,27 @@ module Lucid
 
       # Runs the block in a transaction and records the event in it: it exists if and only if the
       # writes do. A raised error records nothing. A result that answers +failure?+ with true undoes
-      # the writes and records the event with the failure type as its outcome.
+      # the writes and records the event with the failure type as its outcome, unless +undo_on_failure+ is
+      # false (the block already undid its own writes, as a Lucid::Case Command does).
       #
       # @yieldparam tracker [Tracker] to declare subjects and payload
       # @return the value of the block
-      def track(name, reason: nil)
+      def track(name, reason: nil, undo_on_failure: true)
         tracker = Tracker.new
         value = nil
         failed = false
         ActiveRecord::Base.transaction(requires_new: true) do
           value = yield tracker
           if value.respond_to?(:failure?) && value.failure?
-            failed = true
-            raise ActiveRecord::Rollback
+            if undo_on_failure
+              failed = true
+              raise ActiveRecord::Rollback
+            end
+
+            record(name: name, outcome: value.type.to_s, subjects: tracker.subjects, payload: tracker.payload, reason: reason)
+          else
+            record(name: name, subjects: tracker.subjects, changed_fields: tracker.changed_fields, payload: tracker.payload, reason: reason)
           end
-          record(name: name, subjects: tracker.subjects, changed_fields: tracker.changed_fields, payload: tracker.payload, reason: reason)
         end
         record(name: name, outcome: value.type.to_s, payload: tracker.payload, reason: reason) if failed
         value
