@@ -18,6 +18,7 @@ require "lucid/backoffice/authorization"
 require "lucid/backoffice/reveal"
 require "lucid/backoffice/panel_activity"
 require "lucid/backoffice/registry"
+require "lucid/backoffice/action"
 require "action_controller"
 require "action_view"
 require "rails/engine"
@@ -51,6 +52,7 @@ module Lucid
         Tenancy.reset!
         Resource.reset!
         Registry.reset!
+        Action.reset!
       end
     end
   end
