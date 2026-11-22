@@ -33,3 +33,6 @@ en:
     type_to_confirm: "Type %{expected} to confirm"
     action_done: Done
     action_stale: "The state changed, review the preview"
+    impersonating: "Impersonating %{user} in %{tenant}, read-only"
+    impersonation_exit: Exit
+    impersonation_read_only: Impersonation is read-only

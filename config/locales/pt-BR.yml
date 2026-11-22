@@ -41,3 +41,6 @@ pt-BR:
     type_to_confirm: "Digite %{expected} para confirmar"
     action_done: Feito
     action_stale: "O estado mudou, revise a prévia"
+    impersonating: "Impersonando %{user} em %{tenant}, somente leitura"
+    impersonation_exit: Sair
+    impersonation_read_only: A impersonação é somente leitura

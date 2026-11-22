@@ -20,6 +20,9 @@ require "lucid/backoffice/reveal"
 require "lucid/backoffice/panel_activity"
 require "lucid/backoffice/registry"
 require "lucid/backoffice/impersonation"
+require "lucid/backoffice/impersonation_guard"
+require "lucid/backoffice/impersonation_mask"
+require "lucid/backoffice/impersonation_helper"
 require "lucid/backoffice/action"
 require "action_controller"
 require "action_view"
@@ -41,6 +44,11 @@ module Lucid
         configuration.validate!
         Classification.load!
         configuration
+      end
+
+      # @return [Boolean] whether the current request runs inside an impersonation
+      def impersonating?
+        Current.impersonation_id.present?
       end
 
       # Registers menu items, cards, tenant sections and permissions. The app and plugins use the same API.

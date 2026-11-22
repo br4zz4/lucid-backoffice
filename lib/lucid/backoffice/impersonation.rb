@@ -77,7 +77,9 @@ module Lucid
         return self if ended_at
 
         update!(ended_at: Time.current, end_reason: reason.to_s)
-        Activity.record(name: "backoffice.impersonation.end", payload: { reason: reason.to_s }, actor: operator_record)
+        Current.set(impersonation_id: id) do
+          Activity.record(name: "backoffice.impersonation.end", payload: { reason: reason.to_s }, actor: operator_record)
+        end
         self
       end
 
