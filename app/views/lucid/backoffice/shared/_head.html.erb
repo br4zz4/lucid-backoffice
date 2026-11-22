@@ -1,0 +1,14 @@
+<% config = Lucid::Backoffice.configuration %>
+<% theme = Lucid::Backoffice::Theme.tokens(config) %>
+<meta name="theme-color" content="<%= theme[:bg] %>">
+<% if config.stylesheet == :default %>
+  <link rel="stylesheet" href="<%= lb_routes.lb_asset_path(name: "lucid_backoffice.css", v: Lucid::Backoffice::VERSION) %>">
+<% end %>
+<link rel="stylesheet" href="<%= lb_routes.lb_theme_path(v: Lucid::Backoffice::Theme.digest(config)) %>">
+<% (config.stylesheet == :default ? [] : Array(config.stylesheet)).each do |href| %>
+  <link rel="stylesheet" href="<%= href %>">
+<% end %>
+<% config.extra_stylesheets.each do |href| %>
+  <link rel="stylesheet" href="<%= href %>">
+<% end %>
+<script src="<%= lb_routes.lb_asset_path(name: "lucid_backoffice.js", v: Lucid::Backoffice::VERSION) %>" defer></script>

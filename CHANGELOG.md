@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- New default look inspired by brazza.tech: black surfaces, lime accent, hairline borders, pill buttons, mono labels. System font stacks, no external requests.
+- Design tokens as CSS custom properties (`--lb-bg`, `--lb-accent`, ...), served by `assets/theme.css` (no inline styles, CSP friendly) and set with `config.theme` and `config.brand_color`.
+- `config.stylesheet` replaces the gem's CSS entirely; `config.extra_stylesheets` adds to it. Values are validated at boot (`ConfigurationConflict`).
+- `lucid/backoffice/shared/_head` partial so a custom `config.layout` gets the same assets.
+- Assets are served with ETag and `X-Content-Type-Options: nosniff`.
+
 ## 0.1.0
 
 Initial release.

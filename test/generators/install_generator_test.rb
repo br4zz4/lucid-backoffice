@@ -57,6 +57,20 @@ class BackofficeInstallGeneratorTest < Rails::Generators::TestCase
     end
   end
 
+  test "initializer documents the theme options" do
+    # arrange
+    # act
+    run_generator
+
+    # assert
+    assert_file "config/initializers/lucid_backoffice.rb" do |content|
+      assert_match(/config\.brand_color/, content)
+      assert_match(/config\.theme = /, content)
+      assert_match(/config\.extra_stylesheets/, content)
+      assert_match(/config\.stylesheet = /, content)
+    end
+  end
+
   test "creates the data classification file fully commented" do
     # arrange
     # act

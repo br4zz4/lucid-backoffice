@@ -1,6 +1,7 @@
 Lucid::Backoffice::Engine.routes.draw do
   root "dashboard#show"
 
+  get "assets/theme.css", to: "assets#theme", as: :lb_theme, format: false
   get "assets/:name", to: "assets#show", as: :lb_asset, constraints: { name: /lucid_backoffice\.(css|js)/ }, format: false
   get "activity", to: "activity_events#index", as: :activity
   resources :reveals, only: %i[create destroy]

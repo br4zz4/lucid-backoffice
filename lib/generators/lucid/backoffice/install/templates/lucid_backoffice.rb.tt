@@ -22,7 +22,13 @@ Lucid::Backoffice.configure do |config|
   # config.activity_retention = 6.months
   # config.page_size = 25
   # config.title = "Back office"
-  # config.brand_color = "#4f46e5"
+
+  # Look: black with a lime accent by default. Every layer is optional.
+  # config.brand_color = "#c6ff00"                      # accent; the text over it is picked for contrast
+  # config.theme = { bg: "#0b0b0f", radius: "6px" }     # any token of Lucid::Backoffice::Theme::DEFAULTS
+  # config.extra_stylesheets = ["/backoffice-overrides.css"] # loaded after the default CSS
+  # config.stylesheet = ["/my-backoffice.css"]          # replaces the default CSS entirely (nil serves none)
+  # config.layout = "backoffice"                        # replaces the layout; render "lucid/backoffice/shared/head" in it
 
   config.classification_path = Rails.root.join("config/data_classification.yml").to_s
 end

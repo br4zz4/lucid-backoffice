@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="robots" content="noindex">
     <%= csrf_meta_tags %>
-    <style>:root { --lb-brand: <%= Lucid::Backoffice.configuration.brand_color || "#4f46e5" %>; }</style>
-    <link rel="stylesheet" href="<%= lb_routes.lb_asset_path(name: "lucid_backoffice.css") %>">
-    <script src="<%= lb_routes.lb_asset_path(name: "lucid_backoffice.js") %>" defer></script>
+    <%= render "lucid/backoffice/shared/head" %>
   </head>
   <body class="lb-body">
     <nav class="lb-nav">

@@ -17,7 +17,11 @@
 | `reveal_reason_min` | 10 | characters |
 | `activity_retention` | 6 months | |
 | `activity_purge_batch` | 1000 | |
-| `title`, `brand_color`, `layout`, `terms` | | appearance |
+| `title`, `layout`, `terms` | | appearance |
+| `brand_color` | nil (lime `#c6ff00`) | `#rgb` or `#rrggbb`; text over it is chosen for contrast |
+| `theme` | `{}` | token overrides, see [customization](customization.md) |
+| `stylesheet` | `:default` | `:default`, a path/URL (or list) that replaces the gem's CSS, or `nil` for none |
+| `extra_stylesheets` | `[]` | loaded after the default (or replacement) CSS |
 
 A missing required option or a bad classification raises `Lucid::Backoffice::Error::ConfigurationConflict` at boot, naming the key.
 
