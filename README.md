@@ -22,6 +22,8 @@ users:
 
 Open `/backoffice/data/users`: `role` is in the clear, `email` and `name` show `•••••`, and a column nobody classified shows `•••••` too. An operator with the `reveal` permission reveals `contact` for 15 minutes by giving a reason; the reveal and the reason are recorded.
 
+From 0.2 it also writes, only through declared [actions](docs/actions.md), and lets an operator [impersonate](docs/impersonation.md) a user read-only.
+
 It depends only on `activerecord` and `railties`. Devise, CanCanCan, `lucid-tenancy` and `lucid-case` are never required: they plug in through configuration and optional adapters.
 
 ```sh
@@ -38,6 +40,8 @@ bin/rails db:migrate
 - [Masking and reveals](docs/masking-and-reveals.md)
 - [Activity trail](docs/activity.md)
 - [Tenancy](docs/tenancy.md)
+- [Actions](docs/actions.md)
+- [Impersonation](docs/impersonation.md)
 - [Plugins and screens](docs/plugins.md)
 - [Customization](docs/customization.md)
 - [Security](docs/security.md)

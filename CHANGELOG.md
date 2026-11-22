@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+Corrective actions and impersonation.
+
+- `Lucid::Backoffice::Action` DSL: `on`, `field`, `only_if`, `unavailable`, `preview`, `perform` (a block or `with:` a Lucid::Case Command), `result`, `danger`, `transaction`. The preview, the state check, the mandatory reason, the permission and the `backoffice.action.<key>` event are derived.
+- `editable` on a Resource generates an "Edit" action over only the listed fields.
+- Impersonation: read-only, masked, time-boxed, one-time token, page views recorded, banner, `ImpersonationGuard` and `ImpersonationMask` for the app.
+- Generators `lucid:backoffice:action` and `lucid:backoffice:impersonation`.
+- `Activity.track(undo_on_failure:)`.
+
 ## Unreleased
 
 - New default look inspired by brazza.tech: black surfaces, lime accent, hairline borders, pill buttons, mono labels. System font stacks, no external requests.
