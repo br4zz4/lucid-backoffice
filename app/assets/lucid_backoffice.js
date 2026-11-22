@@ -9,3 +9,22 @@ document.addEventListener("DOMContentLoaded", function () {
     sync();
   });
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll("[data-lb-action-form]").forEach(function (form) {
+    var reason = form.querySelector("[data-lb-reason]");
+    var submit = form.querySelector("[data-lb-submit]");
+    var confirmation = form.querySelector("[data-lb-confirmation]");
+    if (!reason || !submit) { return; }
+    var minimum = parseInt(reason.getAttribute("minlength"), 10) || 0;
+    var expected = form.getAttribute("data-lb-expected");
+    var sync = function () {
+      var ok = reason.value.trim().length >= minimum;
+      if (confirmation) { ok = ok && confirmation.value === expected; }
+      submit.disabled = !ok;
+    };
+    reason.addEventListener("input", sync);
+    if (confirmation) { confirmation.addEventListener("input", sync); }
+    sync();
+  });
+});

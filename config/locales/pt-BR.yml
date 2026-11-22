@@ -35,3 +35,9 @@ pt-BR:
     when: Quando
     subjects: Sujeitos
     filter: Filtrar
+    actions: Ações
+    preview: Prévia
+    execute: Executar
+    type_to_confirm: "Digite %{expected} para confirmar"
+    action_done: Feito
+    action_stale: "O estado mudou, revise a prévia"

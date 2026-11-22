@@ -1,0 +1,25 @@
+<h1><%= @action_class.label %></h1>
+<% if @reason %>
+  <p class="lb-flash lb-flash-warn"><%= @reason %></p>
+<% else %>
+  <% expected = @action_class.danger == :high ? (current_tenant ? tenancy.identifier(current_tenant) : @record&.id) : nil %>
+  <%= form_with url: lb_routes.new_action_path(action_key: @action_class.key), method: :get, class: "lb-action-form", data: { lb_action_form: true, lb_expected: expected.to_s } do %>
+    <%= hidden_field_tag :record_id, params[:record_id] %>
+    <%= hidden_field_tag :tenant_id, params[:tenant_id] %>
+    <% @action_class.fields.each_value do |field| %><%= render "lucid/backoffice/actions/field", field: field, action: @action, initial: @initial %><% end %>
+    <%= submit_tag t("lucid_backoffice.preview"), class: "lb-button", name: nil %>
+    <% if @invalid %><p class="lb-flash lb-flash-error"><%= @invalid %></p><% end %>
+    <% if @snapshot %>
+      <%= render "lucid/backoffice/actions/preview", changes: @changes, listings: @listings %>
+      <%= hidden_field_tag :snapshot, @snapshot %>
+      <label><%= t("lucid_backoffice.reason") %></label>
+      <%= text_field_tag :reason, nil, minlength: Lucid::Backoffice.configuration.reveal_reason_min, required: true, data: { lb_reason: true } %>
+      <% if expected %>
+        <label><%= t("lucid_backoffice.type_to_confirm", expected: expected) %></label>
+        <%= text_field_tag :confirmation, nil, autocomplete: "off", data: { lb_confirmation: true } %>
+      <% end %>
+      <%= submit_tag t("lucid_backoffice.execute"), class: "lb-button #{"lb-button-danger" if expected}", formmethod: :post, formaction: lb_routes.run_action_path(action_key: @action_class.key),
+                     disabled: true, name: nil, data: { lb_submit: true } %>
+    <% end %>
+  <% end %>
+<% end %>

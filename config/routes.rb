@@ -5,6 +5,8 @@ Lucid::Backoffice::Engine.routes.draw do
   get "assets/:name", to: "assets#show", as: :lb_asset, constraints: { name: /lucid_backoffice\.(css|js)/ }, format: false
   get "activity", to: "activity_events#index", as: :activity
   resources :reveals, only: %i[create destroy]
+  get "actions/:action_key/new", to: "actions#new", as: :new_action
+  post "actions/:action_key", to: "actions#create", as: :run_action
 
   scope "tenants/:tenant_id", constraints: { tenant_id: %r{[^/]+} } do
     get "/", to: "tenants#show", as: :tenant
