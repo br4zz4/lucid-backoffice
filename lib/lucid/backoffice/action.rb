@@ -130,6 +130,11 @@ module Lucid
         end
       end
 
+      # @return [Boolean] false when an +only_if+ fails: the action is not offered at all
+      def visible?
+        self.class.conditions.all? { |condition| instance_exec(&condition[:block]) }
+      end
+
       # @return [String, nil] why the action cannot run now, nil when it can
       def unavailable_reason
         self.class.conditions.each do |condition|

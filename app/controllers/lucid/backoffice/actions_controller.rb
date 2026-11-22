@@ -53,6 +53,7 @@ module Lucid
       def prepare_preview
         @reason = @action.unavailable_reason
         return if @reason
+        return unless params.key?(:fields) || @action_class.fields.empty?
 
         values = @initial.merge(field_params.symbolize_keys.compact_blank)
         @action = @action_class.new(record: @record, tenant: current_tenant, params: values).prepare!

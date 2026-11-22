@@ -152,6 +152,6 @@ class AccessIntegrationTest < PanelTest
     writing = routes.reject { |route| route.verb == "GET" }.map { |route| [route.verb, route.path.spec.to_s.sub("(.:format)", "")] }
 
     # assert
-    assert_equal [["POST", "/reveals"], ["DELETE", "/reveals/:id"]].sort, writing.sort
+    assert_equal [["POST", "/reveals"], ["DELETE", "/reveals/:id"], ["POST", "/actions/:action_key"]].sort, writing.sort
   end
 end
