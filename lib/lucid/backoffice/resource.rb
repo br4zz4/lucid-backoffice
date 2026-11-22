@@ -88,6 +88,37 @@ module Lucid
           @filters || []
         end
 
+        # Adds an "Edit" action over these columns and nothing else. +with:+ routes the write through a
+        # Command, so its guards, validations and events apply.
+        def editable(*names, with: nil)
+          resource_table = table
+          fields = names.map(&:to_sym)
+          types = editable_types(resource_table, fields)
+          klass = Class.new(Action)
+          klass.define_singleton_method(:key) { "edit_#{resource_table}" }
+          klass.define_singleton_method(:name) { "Lucid::Backoffice::Edit#{resource_table.to_s.camelize}" }
+          klass.on(resource_table)
+          klass.label("Edit")
+          fields.each { |field| klass.field(field, types.fetch(field, :string), required: false) }
+          if with
+            klass.perform(with: with)
+          else
+            klass.perform { record.update!(self.class.fields.keys.to_h { |field| [field, public_send(field)] }) }
+          end
+          @editable = klass
+        end
+
+        def editable_action
+          @editable
+        end
+
+        def editable_types(table, fields)
+          columns = Catalog.columns(Tenancy.adapter.shared_schema, table).to_h { |column| [column.name.to_sym, column.type] }
+          fields.to_h { |field| [field, { integer: :integer, boolean: :boolean, date: :date, text: :text }.fetch(columns[field], :string)] }
+        rescue ActiveRecord::ActiveRecordError
+          {}
+        end
+
         def association(name, table:, foreign_key:)
           (@associations ||= []) << Association.new(name: name.to_sym, table: table.to_s, foreign_key: foreign_key.to_s)
         end

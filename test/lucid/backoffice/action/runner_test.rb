@@ -664,7 +664,7 @@ class ActionRunnerTest < ActionTest
     result = run_action(action_class, record: account, params: { role: "coordinator" })
 
     # assert
-    assert_equal [:failed, "last_owner", "teacher", "last_owner"], [result.status, result.message, account.reload.role, action_events.sole.outcome]
+    assert_equal [:failed, "Last owner", "teacher", "last_owner"], [result.status, result.message, account.reload.role, action_events.sole.outcome]
   end
 
   def test_failure_result_keeps_the_reason_in_the_event

@@ -90,8 +90,15 @@ module Lucid
           block ? @preview = block : @preview
         end
 
-        def perform(&block)
+        # The write. A block, or +with:+ a Lucid::Case Command (its attributes are the fields, plus
+        # +record+ and +tenant+ when it declares them); its failures show their +errors+ message.
+        def perform(with: nil, &block)
+          @perform_with = with if with
           block ? @perform = block : @perform
+        end
+
+        def perform_with
+          @perform_with
         end
 
         def result(&block)
@@ -158,7 +165,14 @@ module Lucid
       end
 
       def execute
-        instance_exec(&self.class.perform)
+        command = self.class.perform_with
+        return instance_exec(&self.class.perform) unless command
+
+        attributes = values.dup
+        names = command.respond_to?(:attribute_names) ? command.attribute_names : []
+        attributes[:record] = record if names.include?(:record)
+        attributes[:tenant] = tenant if names.include?(:tenant)
+        command.call(**attributes)
       end
 
       def result_message(value)

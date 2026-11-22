@@ -34,13 +34,24 @@ module Lucid
           name = "backoffice.action.#{action_class.key}"
           value = nil
           if action_class.transaction
-            value = Activity.track(name, reason: reason) { action.execute }
+            value = Activity.track(name, reason: reason, undo_on_failure: !action_class.perform_with) { action.execute }
           else
             value = action.execute
             Activity.record(name: name, outcome: failure_of(value) || "ok", reason: reason)
           end
           type = failure_of(value)
-          type ? Action::Result.new(status: :failed, message: type, value: value) : Action::Result.new(status: :ok, message: action.result_message(value), value: value)
+          type ? Action::Result.new(status: :failed, message: failure_message(action_class, value, type), value: value) : Action::Result.new(status: :ok, message: action.result_message(value), value: value)
+        end
+
+        def failure_message(action_class, value, type)
+          errors = begin
+            value[:errors]
+          rescue NameError, KeyError, NoMethodError, TypeError
+            nil
+          end
+          return Array(errors).first.to_s if errors.present?
+
+          I18n.t("lucid_backoffice.actions.#{action_class.key}.failures.#{type}", default: type.humanize)
         end
 
         def failure_of(value)
