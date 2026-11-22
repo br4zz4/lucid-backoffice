@@ -9,6 +9,7 @@ module Lucid
         def label(_tenant) = nil
         def health(_tenant) = nil
         def multi_tenant? = false
+        def with(_tenant) = yield
 
         def shared_schema
           ActiveRecord::Base.lease_connection.current_schema

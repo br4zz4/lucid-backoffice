@@ -27,3 +27,9 @@ en:
     when: When
     subjects: Subjects
     filter: Filter
+    actions: Actions
+    preview: Preview
+    execute: Execute
+    type_to_confirm: "Type %{expected} to confirm"
+    action_done: Done
+    action_stale: "The state changed, review the preview"

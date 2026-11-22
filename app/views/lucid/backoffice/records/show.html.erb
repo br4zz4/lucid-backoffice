@@ -5,3 +5,7 @@
     <dd><%= render "lucid/backoffice/ui/value", cell: cell %></dd>
   <% end %>
 </dl>
+<% record_model = params[:table].to_s.classify.safe_constantize %>
+<% if record_model && record_model < ActiveRecord::Base %>
+  <%= render "lucid/backoffice/ui/actions", target: params[:table], record: tenancy.with(current_tenant) { record_model.find_by(id: params[:id]) }, tenant: current_tenant %>
+<% end %>

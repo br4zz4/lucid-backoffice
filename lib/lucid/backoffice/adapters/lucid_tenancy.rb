@@ -29,6 +29,10 @@ module Lucid
 
         def multi_tenant? = true
 
+        def with(tenant, &block)
+          Lucid::Tenancy.with(tenant: tenant, &block)
+        end
+
         def shared_schema
           Lucid::Tenancy.configuration.shared_schema
         end
