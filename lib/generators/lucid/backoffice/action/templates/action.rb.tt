@@ -1,0 +1,9 @@
+class Actions::<%= class_name %> < Lucid::Backoffice::Action
+  on :users
+  # field :role, :select, choices: -> { %w[teacher coordinator] }
+  # unavailable "Not allowed now", if: -> { record.locked? }
+  # danger :high
+  # perform with: Users::ChangeRole
+
+  perform { raise NotImplementedError, "write the change here" }
+end
