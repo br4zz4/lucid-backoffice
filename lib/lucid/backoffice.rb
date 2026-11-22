@@ -4,6 +4,7 @@ require "active_record"
 
 require "lucid/backoffice/version"
 require "lucid/backoffice/errors"
+require "lucid/backoffice/theme"
 require "lucid/backoffice/configuration"
 require "lucid/backoffice/classification"
 require "lucid/backoffice/mask"

@@ -193,7 +193,7 @@ class PanelIntegrationTest < PanelTest
     assert_response :ok
     assert_equal "Escolas", dom.at_css("main.lb-main h1").text
     assert dom.at_css("nav.lb-nav a.lb-brand")
-    assert dom.at_css("link[href='/backoffice/assets/lucid_backoffice.css']")
+    assert dom.at_css("link[href^='/backoffice/assets/lucid_backoffice.css']")
     assert_includes nav_labels, "Escolas"
   end
 
@@ -291,16 +291,22 @@ class PanelIntegrationTest < PanelTest
   def test_brand_color_and_title_come_from_configuration
     # arrange
     configure_panel(permissions: { 1 => %i[view_dashboard] }) do |config|
-      config.brand_color = "#ff0066"
+      config.brand_color = "#3300cc"
       config.title = "Luneta Ops"
     end
 
     # act
     get "/backoffice", headers: as(1)
+    title = dom.at_css("title").text
+    stylesheet = dom.at_css("link[href^='/backoffice/assets/theme.css']")["href"]
+    get stylesheet
 
     # assert
-    assert_includes dom.at_css("style").text, "#ff0066"
-    assert_equal "Luneta Ops", dom.at_css("title").text
+    assert_equal "Luneta Ops", title
+    assert_nil dom.at_css("style")
+    assert_response :ok
+    assert_includes response.body, "--lb-accent:#3300cc"
+    assert_includes response.body, "--lb-on-accent:#fff"
   end
 
   def test_layout_uses_no_tailwind_or_stimulus
@@ -380,5 +386,183 @@ class PanelIntegrationTest < PanelTest
     assert_empty en - pt
     assert_empty pt - en
     assert_operator en.size, :>, 10
+  end
+
+  def head_links = dom.css("head link[rel=stylesheet]").map { _1["href"] }
+
+  def test_default_page_links_default_css_theme_css_and_js_in_order
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] })
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    hrefs = head_links
+    assert_equal 2, hrefs.size
+    assert hrefs[0].start_with?("/backoffice/assets/lucid_backoffice.css?v=#{Lucid::Backoffice::VERSION}")
+    assert hrefs[1].start_with?("/backoffice/assets/theme.css?v=#{Lucid::Backoffice::Theme.digest}")
+    assert dom.at_css("head script[src^='/backoffice/assets/lucid_backoffice.js?v='][defer]")
+    assert_equal "#000", dom.at_css("meta[name='theme-color']")["content"]
+  end
+
+  def test_replaced_stylesheet_drops_the_gem_css_and_keeps_theme_and_custom
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] }) { |config| config.stylesheet = ["/mine.css", "https://cdn.example/x.css"] }
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    hrefs = head_links
+    assert_equal 3, hrefs.size
+    assert hrefs[0].start_with?("/backoffice/assets/theme.css")
+    assert_equal ["/mine.css", "https://cdn.example/x.css"], hrefs.drop(1)
+    refute(hrefs.any? { _1.include?("lucid_backoffice.css") })
+  end
+
+  def test_extra_stylesheets_come_after_the_default
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] }) { |config| config.extra_stylesheets = ["/extra.css"] }
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    hrefs = head_links
+    assert_equal 3, hrefs.size
+    assert hrefs[0].include?("lucid_backoffice.css")
+    assert hrefs[1].include?("theme.css")
+    assert_equal "/extra.css", hrefs[2]
+  end
+
+  def test_extra_stylesheets_come_after_a_replacement
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] }) do |config|
+      config.stylesheet = "/mine.css"
+      config.extra_stylesheets = ["/extra.css"]
+    end
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    assert_equal ["/mine.css", "/extra.css"], head_links.drop(1)
+  end
+
+  def test_nil_stylesheet_links_only_the_theme
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] }) { |config| config.stylesheet = nil }
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    hrefs = head_links
+    assert_equal 1, hrefs.size
+    assert hrefs[0].start_with?("/backoffice/assets/theme.css")
+  end
+
+  def test_theme_css_is_served_with_content_type_and_nosniff
+    # arrange
+    configure_panel { |config| config.brand_color = "#ff0066" }
+
+    # act
+    get "/backoffice/assets/theme.css"
+
+    # assert
+    assert_response :ok
+    assert_equal "text/css", response.media_type
+    assert_equal "nosniff", response.headers["X-Content-Type-Options"]
+    assert_equal Lucid::Backoffice::Theme.css, response.body
+    assert response.headers["ETag"]
+  end
+
+  def test_theme_css_answers_304_for_a_matching_etag
+    # arrange
+    configure_panel
+    get "/backoffice/assets/theme.css"
+    etag = response.headers["ETag"]
+
+    # act
+    get "/backoffice/assets/theme.css", headers: { "If-None-Match" => etag }
+
+    # assert
+    assert_response :not_modified
+  end
+
+  def test_theme_css_etag_changes_with_the_configuration
+    # arrange
+    configure_panel
+    get "/backoffice/assets/theme.css"
+    before = response.headers["ETag"]
+    Lucid::Backoffice.configuration.brand_color = "#ff0066"
+
+    # act
+    get "/backoffice/assets/theme.css", headers: { "If-None-Match" => before }
+
+    # assert
+    assert_response :ok
+    refute_equal before, response.headers["ETag"]
+  end
+
+  def test_static_assets_carry_nosniff_etag_and_answer_304
+    # arrange
+    path = "/backoffice/assets/lucid_backoffice.css"
+    get path
+    etag = response.headers["ETag"]
+    nosniff = response.headers["X-Content-Type-Options"]
+
+    # act
+    get path, headers: { "If-None-Match" => etag }
+
+    # assert
+    assert_equal "nosniff", nosniff
+    assert etag
+    assert_response :not_modified
+    assert_equal "nosniff", response.headers["X-Content-Type-Options"]
+  end
+
+  def test_unknown_asset_name_is_not_found
+    # arrange
+    configure_panel
+
+    # act
+    status = begin
+      get "/backoffice/assets/unknown.css"
+      response.status
+    rescue ActionController::RoutingError
+      404
+    end
+
+    # assert
+    assert_equal 404, status
+  end
+
+  def test_custom_layout_can_render_the_head_partial
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] }) { |config| config.layout = "dummy_head_layout" }
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    assert dom.at_css("#custom-head")
+    assert_nil dom.at_css("nav.lb-nav")
+    assert_equal 2, head_links.size
+    assert head_links[1].start_with?("/backoffice/assets/theme.css")
+    assert dom.at_css("script[src^='/backoffice/assets/lucid_backoffice.js']")
+  end
+
+  def test_default_look_is_black_with_a_lime_accent
+    # arrange
+    path = "/backoffice/assets/lucid_backoffice.css"
+
+    # act
+    get path
+
+    # assert
+    assert_includes response.body, "--lb-bg: #000"
+    assert_includes response.body, "--lb-accent: #c6ff00"
   end
 end

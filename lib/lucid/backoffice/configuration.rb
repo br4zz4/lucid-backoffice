@@ -20,7 +20,10 @@ module Lucid
       attr_accessor :activity_retention, :activity_purge_batch
 
       # Appearance.
-      attr_accessor :title, :brand_color, :layout, :terms
+      attr_accessor :title, :layout, :terms
+      attr_reader :brand_color, :theme, :stylesheet, :extra_stylesheets
+
+      STYLESHEET_REFERENCE = %r{\A(/(?!/)|https?://)[^\s"'<>\\]*\z}
 
       def initialize
         @authorize = ->(_operator, _permission, _context) { false }
@@ -35,6 +38,46 @@ module Lucid
         @activity_purge_batch = 1000
         @title = "Back office"
         @terms = {}
+        @theme = {}
+        @stylesheet = :default
+        @extra_stylesheets = []
+      end
+
+      # The accent color of the panel, +#rgb+ or +#rrggbb+; the text over it is chosen for contrast.
+      def brand_color=(color)
+        Theme.validate_color!(color) unless color.nil?
+        @brand_color = color
+      end
+
+      # Overrides of the design tokens (see {Theme::DEFAULTS}), e.g. +{ bg: "#111", radius: "4px" }+.
+      def theme=(tokens)
+        raise Error::ConfigurationConflict, "config.theme must be a Hash" unless tokens.respond_to?(:to_h)
+
+        normalized = tokens.to_h.transform_keys { |key| key.to_s.to_sym }
+        normalized.each { |token, value| Theme.validate_token!(token, value) }
+        @theme = normalized.transform_values(&:to_s)
+      end
+
+      # +:default+ serves the gem's CSS; a path or URL (or a list of them) replaces it entirely; +nil+ serves none.
+      def stylesheet=(reference)
+        references = Array(reference)
+        references.each { |item| validate_stylesheet!(:stylesheet, item) unless item == :default }
+        raise Error::ConfigurationConflict, "config.stylesheet :default cannot be mixed with paths" if references.include?(:default) && references.size > 1
+
+        @stylesheet = reference.is_a?(Array) ? references.freeze : reference
+      end
+
+      # Stylesheets loaded after the default (or replacement) one; the place for small adjustments.
+      def extra_stylesheets=(references)
+        list = Array(references)
+        list.each { |item| validate_stylesheet!(:extra_stylesheets, item) }
+        @extra_stylesheets = list.freeze
+      end
+
+      # @return [Array<String>] the stylesheet URLs of the layout, in order, given the engine's own routes
+      def stylesheet_urls(default_url)
+        base = stylesheet == :default ? [default_url] : Array(stylesheet)
+        base + extra_stylesheets
       end
 
       # @param callable [#call] +->(operator, permission, context) { }+; the default denies everything
@@ -59,6 +102,14 @@ module Lucid
         raise Error::ConfigurationConflict, "config.categories must include public and unclassified" unless (%w[public unclassified] - categories).empty?
 
         self
+      end
+
+      private
+
+      def validate_stylesheet!(key, reference)
+        return if reference.is_a?(String) && reference.match?(STYLESHEET_REFERENCE)
+
+        raise Error::ConfigurationConflict, "config.#{key} takes a path starting with / or an http(s) URL, got #{reference.inspect}"
       end
     end
   end
