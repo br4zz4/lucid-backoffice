@@ -33,5 +33,7 @@ unless DummyApp::Application.initialized?
   DummyApp::Application.routes.draw do
     mount Lucid::Backoffice::Engine => "/backoffice"
     get "/backoffice-app/organizations", to: "dummy/organizations#index"
+    get "lucid_backoffice/impersonation/enter", to: "lucid/backoffice/impersonations#enter"
+    delete "lucid_backoffice/impersonation", to: "lucid/backoffice/impersonations#destroy"
   end
 end

@@ -1,0 +1,25 @@
+class CreateLucidBackofficeImpersonations < ActiveRecord::Migration[<%= ActiveRecord::Migration.current_version %>]
+<%= "  tenancy :shared\n\n" if defined?(Lucid::Tenancy) -%>
+  def change
+    create_table :lucid_backoffice_impersonations do |t|
+      t.string :operator_type, null: false
+      t.bigint :operator_id, null: false
+      t.string :tenant_identifier
+      t.string :user_type, null: false
+      t.bigint :user_id, null: false
+      t.text :reason, null: false
+      t.jsonb :metadata, null: false, default: {}
+      t.datetime :started_at, null: false
+      t.datetime :expires_at, null: false
+      t.datetime :entered_at
+      t.datetime :ended_at
+      t.string :end_reason
+      t.datetime :created_at, null: false
+    end
+    add_index :lucid_backoffice_impersonations, %i[operator_type operator_id]
+    add_index :lucid_backoffice_impersonations, %i[user_type user_id]
+
+    add_column :lucid_backoffice_activity_events, :impersonation_id, :bigint
+    add_index :lucid_backoffice_activity_events, :impersonation_id
+  end
+end

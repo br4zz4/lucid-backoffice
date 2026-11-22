@@ -15,14 +15,16 @@ module Lucid
       # @return [Event]
       # @raise [ActiveRecord::RecordInvalid] the payload holds something that is not an identifier
       def record(name:, outcome: "ok", subjects: [], changed_fields: [], payload: {}, reason: nil, actor: Current.actor)
-        Event.create!(
+        attributes = {
           name: name.to_s, outcome: outcome.to_s,
           actor_type: actor ? actor.class.name : SYSTEM, actor_id: actor.respond_to?(:id) ? actor.id : nil,
           tenant_identifier: Current.tenant_identifier&.to_s,
           subjects: subjects, changed_fields: changed_fields, payload: payload,
           reason: reason || Current.reason, request_id: Current.request_id,
           ip_address: Current.ip_address, user_agent: Current.user_agent, occurred_at: Time.current
-        )
+        }
+        attributes[:impersonation_id] = Current.impersonation_id if Event.column_names.include?("impersonation_id")
+        Event.create!(attributes)
       end
 
       # Runs the block in a transaction and records the event in it: it exists if and only if the
