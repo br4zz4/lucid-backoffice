@@ -331,6 +331,54 @@ class PanelIntegrationTest < PanelTest
     assert_equal "/logout", dom.at_css("a.lb-signout")["href"]
   end
 
+  def test_sign_out_defaults_to_a_get_link_without_form
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] }) { |config| config.sign_out_path = -> { "/logout" } }
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    link = dom.at_css("a.lb-signout")
+    assert_equal "/logout", link["href"]
+    assert_equal "Sign out", link.text.strip
+    assert_empty dom.css("form.lb-signout-form")
+    assert_empty dom.css("[type=submit].lb-signout")
+  end
+
+  def test_sign_out_with_delete_renders_a_form_button
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] }) do |config|
+      config.sign_out_path = -> { "/logout" }
+      config.sign_out_method = :delete
+    end
+
+    # act
+    with_forgery_protection { get "/backoffice", headers: as(1) }
+
+    # assert
+    form = dom.at_css("form.lb-signout-form")
+    assert_equal "post", form["method"]
+    assert_equal "/logout", form["action"]
+    assert_equal "delete", form.at_css("input[name=_method]")["value"]
+    assert_predicate form.at_css("input[name=authenticity_token]")["value"], :present?
+    button = form.at_css(".lb-signout[type=submit]")
+    assert_equal "Sign out", button["value"] || button.text.strip
+    assert_empty dom.css("a.lb-signout")
+  end
+
+  def test_sign_out_renders_nothing_without_a_path
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] }) { |config| config.sign_out_method = :delete }
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    assert_empty dom.css(".lb-signout")
+    assert_empty dom.css("form.lb-signout-form")
+  end
+
   def test_pt_br_locale_translates_the_panel
     # arrange
     configure_panel(permissions: { 1 => %i[view_dashboard browse view_activity] })

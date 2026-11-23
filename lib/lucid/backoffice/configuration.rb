@@ -6,7 +6,7 @@ module Lucid
       DEFAULT_SECRET_COLUMNS = /password|token|secret|digest|otp|encrypted/i
 
       # Integration with the host app.
-      attr_accessor :current_operator, :authenticate, :sign_out_path, :operator_label, :current_actor
+      attr_accessor :current_operator, :authenticate, :sign_out_path, :sign_out_method, :operator_label, :current_actor
       attr_reader :authorize
 
       # Data.
@@ -33,6 +33,7 @@ module Lucid
       end
 
       def initialize
+        @sign_out_method = :get
         @authorize = ->(_operator, _permission, _context) { false }
         @tenancy = :none
         @categories = DEFAULT_CATEGORIES.dup

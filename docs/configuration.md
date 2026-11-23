@@ -6,6 +6,7 @@
 | `authenticate` | required | `->(controller) { }`, redirect or render to stop |
 | `authorize` | denies | `->(operator, permission, context) { true/false }` |
 | `sign_out_path` | nil | `-> { path }` evaluated in the view |
+| `sign_out_method` | `:get` | `:get` renders a link; `:delete` (and others) render a button that submits that method, as Devise needs |
 | `current_actor` | `current_operator` | actor recorded outside the panel |
 | `tenancy` | `:none` | `:none`, `:lucid_tenancy` or an adapter |
 | `classification_path` | nil | YAML of categories |

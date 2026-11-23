@@ -151,6 +151,7 @@ class ConfigurationTest < BackofficeTest
     # assert
     assert_equal :none, config.tenancy
     assert_equal 25, config.page_size
+    assert_equal :get, config.sign_out_method
     assert_includes config.categories, "public"
     assert_includes config.categories, "unclassified"
   end

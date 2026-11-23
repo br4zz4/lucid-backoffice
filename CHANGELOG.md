@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- `config.sign_out_method` (default `:get`): with `:delete` the layout renders a button instead of a link, which is what Devise's `sign_out_via :delete` needs.
+
 ## 0.2.1
 
 - The Lucid::Case integration ignores events without a name (anonymous Commands) instead of failing the Command.
