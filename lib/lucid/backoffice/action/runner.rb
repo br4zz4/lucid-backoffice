@@ -13,7 +13,7 @@ module Lucid
           context = { tenant: tenant, record: record, action: action_class.key }
           return failed(:forbidden, "not allowed") unless Authorization.allowed?(operator, action_class.permission, context)
 
-          action = action_class.new(record: record, tenant: tenant, params: params)
+          action = action_class.new(record: record, tenant: tenant, params: params, reason: reason&.to_s&.strip)
           reason = reason.to_s.strip
           minimum = Lucid::Backoffice.configuration.reveal_reason_min
           return failed(:invalid, "reason must have at least #{minimum} characters") if reason.length < minimum
@@ -40,7 +40,7 @@ module Lucid
             Activity.record(name: name, outcome: failure_of(value) || "ok", reason: reason)
           end
           type = failure_of(value)
-          type ? Action::Result.new(status: :failed, message: failure_message(action_class, value, type), value: value) : Action::Result.new(status: :ok, message: action.result_message(value), value: value)
+          type ? Action::Result.new(status: :failed, message: failure_message(action_class, value, type), value: value) : Action::Result.new(status: :ok, message: action.result_message(value), value: value, redirect: action.redirect_url(value))
         end
 
         def failure_message(action_class, value, type)
