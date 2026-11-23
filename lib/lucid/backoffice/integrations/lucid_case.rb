@@ -19,6 +19,7 @@ module Lucid
 
         def observe(event:, command:, result:)
           return unless event.kind == :case
+          return if event.name.to_s.strip.empty?
 
           records = records_in(event.input) + records_in(event.content)
           Activity.record(

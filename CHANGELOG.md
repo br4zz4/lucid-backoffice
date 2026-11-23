@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- The Lucid::Case integration ignores events without a name (anonymous Commands) instead of failing the Command.
+
 ## 0.2.0
 
 Corrective actions and impersonation.
