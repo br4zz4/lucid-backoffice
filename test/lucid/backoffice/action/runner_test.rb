@@ -764,4 +764,116 @@ class ActionRunnerTest < ActionTest
     # assert
     assert_equal [true, false], results.map(&:ok?)
   end
+
+  def test_redirect_block_receives_the_value_returned_by_perform
+    # arrange
+    configure_actions
+    action_class = build_action("Provision") do
+      on :global
+      perform { { slug: "alfa", count: 2 } }
+      redirect_to { |value| "https://other.example.test/schools/#{value[:slug]}" }
+    end
+
+    # act
+    result = run_action(action_class)
+
+    # assert
+    assert_equal "https://other.example.test/schools/alfa", result.redirect
+    assert_predicate result, :ok?
+  end
+
+  def test_redirect_is_nil_without_redirect_to
+    # arrange
+    configure_actions
+    account = create_account
+
+    # act
+    result = run_action(role_action, record: account, params: { role: "coordinator" })
+
+    # assert
+    assert_nil result.redirect
+  end
+
+  def test_failure_result_has_no_redirect_and_does_not_evaluate_the_block
+    # arrange
+    configure_actions
+    evaluated = []
+    action_class = build_action("Provision") do
+      on :global
+      perform { Failure.new(:remote_down) }
+      redirect_to { |value| evaluated << value && "/somewhere" }
+    end
+
+    # act
+    result = run_action(action_class)
+
+    # assert
+    assert_nil result.redirect
+    refute_predicate result, :ok?
+    assert_empty evaluated
+  end
+
+  def test_result_new_without_redirect_defaults_to_nil
+    # arrange
+    # act
+    result = Action::Result.new(status: :ok, message: "done", value: 1)
+
+    # assert
+    assert_nil result.redirect
+    assert_predicate result, :ok?
+    assert_equal [:ok, "done", 1], [result.status, result.message, result.value]
+  end
+
+  def test_result_new_accepts_a_redirect
+    # arrange
+    # act
+    result = Action::Result.new(status: :ok, message: nil, value: nil, redirect: "/x")
+
+    # assert
+    assert_equal "/x", result.redirect
+  end
+
+  def test_perform_reads_the_reason_typed_by_the_operator
+    # arrange
+    configure_actions
+    seen = []
+    action_class = build_action("Provision") do
+      on :global
+      perform { seen << reason }
+    end
+
+    # act
+    run_action(action_class)
+
+    # assert
+    assert_equal [REASON], seen
+    assert_equal REASON, action_events("backoffice.action.provision").sole.reason
+  end
+
+  def test_redirect_to_reads_the_reason_typed_by_the_operator
+    # arrange
+    configure_actions
+    action_class = build_action("Provision") do
+      on :global
+      perform { 1 }
+      redirect_to { |_value| "/audit?reason=#{reason}" }
+    end
+
+    # act
+    result = run_action(action_class)
+
+    # assert
+    assert_equal "/audit?reason=#{REASON}", result.redirect
+  end
+
+  def test_reason_is_nil_when_the_action_is_built_directly
+    # arrange
+    action = build_action("Provision") { on :global }.new
+
+    # act
+    reason = action.reason
+
+    # assert
+    assert_nil reason
+  end
 end

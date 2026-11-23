@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3
+
+- `Action.redirect_to { |value| url }`: where the operator goes after a successful run (used by impersonation to open the tenant host).
+
 ## 0.2.2
 
 - `config.sign_out_method` (default `:get`): with `:delete` the layout renders a button instead of a link, which is what Devise's `sign_out_via :delete` needs.

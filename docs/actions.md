@@ -20,6 +20,8 @@ end
 - **Danger:** `danger :high` asks the operator to type the tenant identifier (or the record id).
 - **Execution:** a mandatory reason, the permission of the action (`:run_action` by default), a transaction (`transaction false` to opt out, e.g. HTTP) and one `backoffice.action.<key>` event with the reason.
 - **With a Command:** `perform with: Users::ChangeRole` passes the fields as attributes (plus `record` and `tenant` when the Command declares them). A failure shows `result[:errors].first`, or `lucid_backoffice.actions.<key>.failures.<type>`, or the humanized type. The Command's own event and the action event both stay.
+- **Reason:** `reason` inside `perform` is the reason the operator typed (the same one recorded in the event).
+- **Redirect:** `redirect_to { |value| url }` sends the operator somewhere after a successful run (for example the one-time URL of an impersonation) instead of back to the screen. The URL comes from the app, never from a parameter.
 - **Editable:** `editable :name, :city` on a Resource, optionally `with: Organization::Update`.
 
 Bulk actions are not supported yet.

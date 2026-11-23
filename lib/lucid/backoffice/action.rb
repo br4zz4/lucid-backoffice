@@ -14,7 +14,9 @@ module Lucid
     #     perform { record.update!(role: role) }
     #   end
     class Action
-      Result = Data.define(:status, :message, :value) do
+      Result = Data.define(:status, :message, :value, :redirect) do
+        def initialize(status:, message:, value:, redirect: nil) = super
+
         def ok? = status == :ok
       end
 
@@ -104,12 +106,19 @@ module Lucid
         def result(&block)
           block ? @result = block : @result
         end
+
+        # Where the operator goes after a successful run, instead of back to the screen it came from:
+        # +redirect_to { |value| url }+, evaluated in the action. The URL comes from the app, never from a parameter.
+        def redirect_to(&block)
+          block ? @redirect_to = block : @redirect_to
+        end
       end
 
-      attr_reader :record, :tenant, :params, :values
+      attr_reader :record, :tenant, :params, :values, :reason
 
-      def initialize(record: nil, tenant: nil, params: {})
+      def initialize(record: nil, tenant: nil, params: {}, reason: nil)
         @record = record
+        @reason = reason
         @tenant = tenant
         @params = params.to_h.with_indifferent_access
         @values = {}
@@ -177,6 +186,10 @@ module Lucid
 
       def result_message(value)
         self.class.result ? instance_exec(value, &self.class.result) : nil
+      end
+
+      def redirect_url(value)
+        self.class.redirect_to ? instance_exec(value, &self.class.redirect_to) : nil
       end
 
       # Used by +result { notice "..." }+.

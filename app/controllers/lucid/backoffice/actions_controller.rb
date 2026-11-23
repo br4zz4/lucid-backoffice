@@ -21,7 +21,12 @@ module Lucid
           Action::Runner.call(@action_class, operator: current_operator, reason: params[:reason], snapshot: params[:snapshot].to_s,
                               record: find_record, tenant: current_tenant, params: field_params, confirmation: params[:confirmation])
         end
-        return redirect_back(fallback_location: lb_routes.root_path, notice: result.message.presence || I18n.t("lucid_backoffice.action_done")) if result.ok?
+        if result.ok?
+          notice = result.message.presence || I18n.t("lucid_backoffice.action_done")
+          return redirect_to(result.redirect, allow_other_host: true, notice: notice) if result.redirect.present?
+
+          return redirect_back(fallback_location: lb_routes.root_path, notice: notice)
+        end
 
         flash.now[:alert] = I18n.t("lucid_backoffice.action_#{result.status}", message: result.message, default: result.message.to_s)
         render_form

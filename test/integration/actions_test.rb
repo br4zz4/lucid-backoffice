@@ -261,6 +261,93 @@ class ActionsIntegrationTest < PanelTest
     assert_equal "3 migrations aplicadas", flash[:notice]
   end
 
+  def test_post_success_with_redirect_to_goes_to_the_url_with_the_notice
+    # arrange
+    configure_actions
+    role_action do
+      result { notice "feito" }
+      redirect_to { |_value| "/backoffice/records/destino" }
+    end
+    account = create_account
+    snapshot = role_preview(account)
+
+    # act
+    submit_action("change_user_role", role_submission(account, snapshot))
+
+    # assert
+    assert_redirected_to "/backoffice/records/destino"
+    assert_equal "feito", flash[:notice]
+    assert_equal "coordinator", account.reload.role
+  end
+
+  def test_post_success_with_redirect_to_another_host_is_followed
+    # arrange
+    configure_actions
+    role_action { redirect_to { |_value| "https://escola-alfa.example.test/painel" } }
+    account = create_account
+    snapshot = role_preview(account)
+
+    # act
+    submit_action("change_user_role", role_submission(account, snapshot))
+
+    # assert
+    assert_redirected_to "https://escola-alfa.example.test/painel"
+    assert_equal I18n.t("lucid_backoffice.action_done"), flash[:notice]
+  end
+
+  def test_post_success_redirect_uses_the_value_returned_by_perform
+    # arrange
+    configure_actions
+    role_action do
+      perform { { slug: "beta", id: record.id } }
+      redirect_to { |value| "https://#{value[:slug]}.example.test/accounts/#{value[:id]}" }
+    end
+    account = create_account
+    snapshot = role_preview(account)
+
+    # act
+    submit_action("change_user_role", role_submission(account, snapshot))
+
+    # assert
+    assert_redirected_to "https://beta.example.test/accounts/#{account.id}"
+  end
+
+  def test_post_success_without_redirect_to_goes_back_to_the_referer
+    # arrange
+    configure_actions
+    role_action
+    account = create_account
+    snapshot = role_preview(account)
+
+    # act
+    post "#{ACTIONS}/change_user_role", params: role_submission(account, snapshot),
+                                        headers: as(1).merge("Referer" => "http://www.example.com/backoffice/somewhere")
+
+    # assert
+    assert_redirected_to "http://www.example.com/backoffice/somewhere"
+  end
+
+  def test_post_failure_does_not_redirect_even_with_redirect_to
+    # arrange
+    configure_actions
+    failure = Struct.new(:type) { def failure? = true }
+    role_action do
+      perform { failure.new(:remote_down) }
+      redirect_to { |_value| "https://escola-alfa.example.test/painel" }
+    end
+    account = create_account
+    snapshot = role_preview(account)
+
+    # act
+    submit_action("change_user_role", role_submission(account, snapshot))
+
+    # assert
+    assert_response :unprocessable_entity
+    refute_predicate response, :redirect?
+    assert_predicate alert_text, :present?
+    assert_predicate dom.at_css("form"), :present?
+  end
+
   def test_post_after_the_state_changed_is_stale_and_writes_nothing
     # arrange
     configure_actions
