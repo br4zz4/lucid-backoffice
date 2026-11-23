@@ -281,6 +281,37 @@ class LucidCaseIntegrationTest < IntegrationTest
     assert_equal 0, events.size
   end
 
+  def test_anonymous_command_succeeds_and_records_nothing
+    # arrange
+    Lucid::Backoffice::Integrations::LucidCase.install!
+    anonymous = Class.new(Lucid::Case::Command) do
+      attributes :label
+
+      def call!
+        success(widget: Widget.create!(label: label))
+      end
+    end
+
+    # act
+    result = anonymous.call(label: "a")
+
+    # assert
+    assert result.success?
+    assert_equal 1, Widget.count
+    assert_equal 0, events.size
+  end
+
+  def test_named_command_still_records_exactly_one_event
+    # arrange
+    Lucid::Backoffice::Integrations::LucidCase.install!
+
+    # act
+    Widgets::Create.call(label: "a")
+
+    # assert
+    assert_equal 1, events.size
+  end
+
   def test_install_is_idempotent
     # arrange
     Lucid::Backoffice::Integrations::LucidCase.install!
