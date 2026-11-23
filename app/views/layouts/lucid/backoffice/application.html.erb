@@ -14,7 +14,12 @@
       <% if allowed?(:view_activity) %><a href="<%= lb_routes.activity_path %>"><%= t("lucid_backoffice.activity") %></a><% end %>
       <% lucid_backoffice_menu.each do |item| %><a href="<%= item.path %>"><%= item.label %></a><% end %>
       <% if Lucid::Backoffice.configuration.sign_out_path %>
-        <a class="lb-signout" href="<%= instance_exec(&Lucid::Backoffice.configuration.sign_out_path) %>"><%= t("lucid_backoffice.sign_out") %></a>
+        <% sign_out_path = instance_exec(&Lucid::Backoffice.configuration.sign_out_path) %>
+        <% if Lucid::Backoffice.configuration.sign_out_method.to_sym == :get %>
+          <a class="lb-signout" href="<%= sign_out_path %>"><%= t("lucid_backoffice.sign_out") %></a>
+        <% else %>
+          <%= button_to t("lucid_backoffice.sign_out"), sign_out_path, method: Lucid::Backoffice.configuration.sign_out_method, class: "lb-signout", form: { class: "lb-signout-form" } %>
+        <% end %>
       <% end %>
     </nav>
     <main class="lb-main">

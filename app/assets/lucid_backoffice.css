@@ -28,6 +28,8 @@
 .lb-brand { font-weight: 600; font-size: 1.05rem !important; letter-spacing: -.04em; color: var(--lb-text) !important; }
 .lb-brand::after { content: ""; display: inline-block; width: .45rem; height: .45rem; margin-left: .35rem; border-radius: 50%; background: var(--lb-accent); }
 .lb-signout { margin-left: auto; }
+.lb-signout-form { display: contents; }
+.lb-signout-form .lb-signout { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 0; }
 .lb-main { padding: 2rem 1.5rem 4rem; max-width: 80rem; margin: 0 auto; }
 
 .lb h1, .lb h2, .lb h3 { font-weight: 600; letter-spacing: -.035em; text-wrap: balance; margin: 0 0 .75rem; }
