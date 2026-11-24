@@ -49,6 +49,8 @@ en:
     filter: Filter
     actions: Actions
     preview: Preview
+    locked_value: "•••••"
+    locked_field: Reveal the data to edit
     execute: Execute
     type_to_confirm: "Type %{expected} to confirm"
     action_done: Done

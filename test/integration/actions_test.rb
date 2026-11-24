@@ -125,6 +125,7 @@ class ActionsIntegrationTest < PanelTest
   def test_new_shows_the_field_filled_with_the_current_value
     # arrange
     configure_actions
+    grant_contact_reveal
     role_action
     account = create_account(role: "teacher")
 
@@ -166,6 +167,52 @@ class ActionsIntegrationTest < PanelTest
     assert_includes text, MASKED
     refute_includes text, "teacher"
     refute_includes text, "coordinator"
+  end
+
+  def test_new_locks_a_field_over_a_masked_column_without_leaking_the_value
+    # arrange
+    configure_actions
+    role_action
+    account = create_account(role: "teacher")
+
+    # act
+    open_preview("change_user_role", { record_id: account.id })
+
+    # assert
+    assert_response :ok
+    locked = dom.at_css("input#fields_role")
+    refute_includes response.body, "teacher"
+    assert_equal [MASKED, "disabled", nil], [locked["value"], locked["disabled"], locked["name"]]
+    assert_nil dom.at_css("select[name='fields[role]']")
+  end
+
+  def test_new_unlocks_the_field_when_the_category_is_revealed
+    # arrange
+    configure_actions
+    role_action
+    account = create_account(role: "teacher")
+    grant_contact_reveal
+
+    # act
+    open_preview("change_user_role", { record_id: account.id })
+
+    # assert
+    assert_nil dom.at_css("input#fields_role[disabled]")
+    assert_equal "teacher", dom.at_css("select[name='fields[role]'] option[selected]")["value"]
+  end
+
+  def test_post_discards_the_value_sent_for_a_locked_field
+    # arrange
+    configure_actions
+    role_action
+    account = create_account(role: "teacher")
+    snapshot = role_preview(account, role: "teacher")
+
+    # act
+    submit_action("change_user_role", role_submission(account, snapshot, role: "coordinator"))
+
+    # assert
+    assert_equal "teacher", account.reload.role
   end
 
   def test_new_with_values_reveals_the_preview_when_the_category_was_revealed
@@ -234,6 +281,7 @@ class ActionsIntegrationTest < PanelTest
   def test_post_with_reason_and_matching_snapshot_writes_and_records_the_event
     # arrange
     configure_actions
+    grant_contact_reveal
     role_action
     account = create_account(role: "teacher")
     snapshot = role_preview(account)
@@ -281,6 +329,7 @@ class ActionsIntegrationTest < PanelTest
   def test_post_success_with_redirect_to_goes_to_the_url_with_the_notice
     # arrange
     configure_actions
+    grant_contact_reveal
     role_action do
       result { notice "feito" }
       redirect_to { |_value| "/backoffice/records/destino" }
@@ -511,6 +560,7 @@ class ActionsIntegrationTest < PanelTest
   def test_danger_high_with_the_right_confirmation_passes
     # arrange
     configure_actions
+    grant_contact_reveal
     role_action { danger :high }
     account = create_account(role: "teacher")
     snapshot = role_preview(account)
@@ -538,6 +588,7 @@ class ActionsIntegrationTest < PanelTest
   def test_transaction_false_performs_outside_a_transaction_and_records_the_event_after
     # arrange
     configure_actions
+    grant_contact_reveal
     seen = []
     role_action do
       transaction false
@@ -665,6 +716,7 @@ class ActionsIntegrationTest < PanelTest
   def test_post_with_csrf_token_is_accepted
     # arrange
     configure_actions
+    grant_contact_reveal
     role_action
     account = create_account(role: "teacher")
 

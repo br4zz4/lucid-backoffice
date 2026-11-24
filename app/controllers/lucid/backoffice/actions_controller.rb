@@ -10,7 +10,7 @@ module Lucid
         tenancy.with(current_tenant) do
           @record = find_record
           @action = @action_class.new(record: @record, tenant: current_tenant, params: field_params)
-          @initial = @action.initial_values
+          @initial = @action.initial_values(revealed: revealed_categories)
           prepare_preview
         end
       end
@@ -19,7 +19,8 @@ module Lucid
         authorize!(@action_class.permission, context)
         result = tenancy.with(current_tenant) do
           Action::Runner.call(@action_class, operator: current_operator, reason: params[:reason], snapshot: params[:snapshot].to_s,
-                              record: find_record, tenant: current_tenant, params: field_params, confirmation: params[:confirmation])
+                              record: find_record, tenant: current_tenant, params: field_params, confirmation: params[:confirmation],
+                              revealed: revealed_categories)
         end
         if result.ok?
           notice = result.message.presence || I18n.t("lucid_backoffice.action_done")
@@ -46,6 +47,10 @@ module Lucid
         params.fetch(:fields, {}).permit(*@action_class.fields.keys).to_h
       end
 
+      def revealed_categories
+        @revealed_categories ||= Reveal.categories_for(operator: current_operator, tenant: current_tenant)
+      end
+
       def find_record
         return nil unless @action_class.target && !%w[tenant global].include?(@action_class.target)
 
@@ -56,15 +61,17 @@ module Lucid
       end
 
       def prepare_preview
+        @locked = @action.locked_names(revealed: revealed_categories)
         @reason = @action.unavailable_reason
         return if @reason
         return unless params.key?(:fields) || @action_class.fields.empty?
 
-        values = @initial.merge(field_params.symbolize_keys.compact_blank)
+        submitted = @action.with_locked_current(field_params, revealed: revealed_categories).symbolize_keys.compact_blank
+        values = @initial.reject { |_name, value| value.equal?(Action::Field::LOCKED) }.merge(submitted)
         @action = @action_class.new(record: @record, tenant: current_tenant, params: values).prepare!
         preview = @action.build_preview
         @snapshot = preview.snapshot
-        @changes = preview.masked(revealed: Reveal.categories_for(operator: current_operator, tenant: current_tenant))
+        @changes = preview.masked(revealed: revealed_categories)
         @listings = preview.listings
       rescue ArgumentError => e
         @invalid = e.message
@@ -74,7 +81,7 @@ module Lucid
         tenancy.with(current_tenant) do
           @record = find_record
           @action = @action_class.new(record: @record, tenant: current_tenant, params: field_params)
-          @initial = @action.initial_values
+          @initial = @action.initial_values(revealed: revealed_categories)
           prepare_preview
         end
         render :new, status: :unprocessable_entity

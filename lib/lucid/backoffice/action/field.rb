@@ -29,6 +29,8 @@ module Lucid
           default.respond_to?(:call) ? action.instance_exec(&default) : default
         end
       end
+
+      Field.const_set(:LOCKED, Object.new.tap { |sentinel| sentinel.define_singleton_method(:inspect) { "LOCKED" } }.freeze)
     end
   end
 end

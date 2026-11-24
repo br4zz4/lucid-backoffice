@@ -57,6 +57,8 @@ pt-BR:
     filter: Filtrar
     actions: Ações
     preview: Prévia
+    locked_value: "•••••"
+    locked_field: Revele os dados para editar
     execute: Executar
     type_to_confirm: "Digite %{expected} para confirmar"
     action_done: Feito

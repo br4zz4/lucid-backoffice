@@ -173,7 +173,8 @@ class EditableTest < ActionTest
     action = editable_resource(:age, :active, :born_on, :bio).editable_action
 
     # act
-    result = run_action(action, record: profile, params: { age: "41", active: "1", born_on: "2001-02-03", bio: "novo" })
+    result = run_action(action, record: profile, params: { age: "41", active: "1", born_on: "2001-02-03", bio: "novo" },
+                        revealed: %w[contact free_text])
 
     # assert
     assert_equal :ok, result.status

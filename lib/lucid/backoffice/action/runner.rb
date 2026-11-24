@@ -9,11 +9,13 @@ module Lucid
         # @param action_class [Class<Action>]
         # @param snapshot [String] the digest shown with the preview
         # @param confirmation [String] what the operator typed for a `danger :high` action
-        def call(action_class, operator:, reason:, snapshot:, record: nil, tenant: nil, params: {}, confirmation: nil)
+        def call(action_class, operator:, reason:, snapshot:, record: nil, tenant: nil, params: {}, confirmation: nil, revealed: [])
           context = { tenant: tenant, record: record, action: action_class.key }
           return failed(:forbidden, "not allowed") unless Authorization.allowed?(operator, action_class.permission, context)
 
           action = action_class.new(record: record, tenant: tenant, params: params, reason: reason&.to_s&.strip)
+          action = action_class.new(record: record, tenant: tenant, reason: reason&.to_s&.strip,
+                                    params: action.with_locked_current(params, revealed: revealed))
           reason = reason.to_s.strip
           minimum = Lucid::Backoffice.configuration.reveal_reason_min
           return failed(:invalid, "reason must have at least #{minimum} characters") if reason.length < minimum

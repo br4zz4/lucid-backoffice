@@ -84,6 +84,33 @@ class LucidCaseActionTest < ActionTest
     I18n.backend.store_translations(:en, lucid_backoffice: { actions: { key => { failures: { type => text } } } })
   end
 
+  def test_command_receives_the_current_value_of_a_locked_field
+    # arrange
+    configure_actions
+    account = create_account(role: "teacher")
+    action = command_action(Accounts::ChangeRole)
+    snapshot = snapshot_for(action, record: account, params: { role: "teacher" })
+
+    # act
+    result = run_action(action, record: account, params: { role: "coordinator" }, snapshot: snapshot, revealed: [])
+
+    # assert
+    assert_equal [:ok, "teacher"], [result.status, account.reload.role]
+  end
+
+  def test_command_receives_the_submitted_value_when_the_field_is_revealed
+    # arrange
+    configure_actions
+    account = create_account(role: "teacher")
+    action = command_action(Accounts::ChangeRole)
+
+    # act
+    result = run_action(action, record: account, params: { role: "coordinator" }, revealed: %w[contact])
+
+    # assert
+    assert_equal [:ok, "coordinator"], [result.status, account.reload.role]
+  end
+
   def test_fields_become_attributes_and_record_is_passed
     # arrange
     configure_actions

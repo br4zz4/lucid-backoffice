@@ -6,7 +6,7 @@
   <%= form_with url: lb_routes.new_action_path(action_key: @action_class.key), method: :get, class: "lb-action-form", data: { lb_action_form: true, lb_expected: expected.to_s } do %>
     <%= hidden_field_tag :record_id, params[:record_id] %>
     <%= hidden_field_tag :tenant_id, params[:tenant_id] %>
-    <% @action_class.fields.each_value do |field| %><%= render "lucid/backoffice/actions/field", field: field, action: @action, initial: @initial %><% end %>
+    <% @action_class.fields.each_value do |field| %><%= render "lucid/backoffice/actions/field", field: field, action: @action, initial: @initial, locked: @locked %><% end %>
     <%= submit_tag t("lucid_backoffice.preview"), class: "lb-button", name: nil %>
     <% if @invalid %><p class="lb-flash lb-flash-error"><%= @invalid %></p><% end %>
     <% if @snapshot %>
