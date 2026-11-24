@@ -1,6 +1,6 @@
 # Lucid::Backoffice
 
-An operation panel for Rails apps. Operators browse the app's data without declaring anything, and **every column is masked** unless it is classified `public` or an operator reveals its category with a reason. What they see and do is recorded.
+An operation panel for Rails apps. Operators browse the app's data without declaring anything, and **every column is masked** unless it is classified `public` or an operator reveals its category with a reason. They search, filter and sort by the columns they can read, follow foreign keys, and create, edit or delete the records the app declared, always as an Action with a reason. What they see and do is recorded.
 
 ```ruby
 # config/initializers/lucid_backoffice.rb

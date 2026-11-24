@@ -25,3 +25,11 @@ end
 - **Editable:** `editable :name, :city` on a Resource, optionally `with: Organization::Update`.
 
 Bulk actions are not supported yet.
+
+## Collection actions, locked fields, submit options and secrets
+
+- **Collection:** `on :users, collection: true` is an Action on the table as a whole (no record), offered in the header of its list. `landing :record` / `landing :list` chooses where the operator goes after it succeeds.
+- **Locked fields:** a field named like a column of the record's table whose category is not public and not revealed is shown as dots, disabled and never submitted; the value the Action receives is read on the server. Reveal the category to edit it, or classify the column as `public`.
+- **Submit options:** `submit :email, label: "Send by email", if: -> { email_available? }` replaces "Execute" with one button per available option. The chosen key is `submitted` in the Action and the `submit` attribute of a Command that declares it. An option that is not offered is refused.
+- **Email available:** `email_available?` asks `config.email_available`, or reads the ActionMailer settings (`perform_deliveries`; `:smtp` needs an address other than localhost; any other registered delivery method counts). The gem never knows the provider.
+- **One-time secret:** `secret { |value| string }` shows the value once after a successful run (200, `Cache-Control: no-store`, a read-only field with a copy button, never a link). It never goes into flash, session, the activity event or logs.

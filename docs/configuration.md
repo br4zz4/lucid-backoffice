@@ -27,3 +27,5 @@
 A missing required option or a bad classification raises `Lucid::Backoffice::Error::ConfigurationConflict` at boot, naming the key.
 
 Permissions asked of `authorize`: `:view_dashboard`, `:view_tenant`, `:browse`, `:reveal`, `:view_activity` and those declared by plugins. The gem defines no roles.
+
+`email_available` (default nil): a callable, `-> { true/false }`, that tells Actions whether the app can send email. With nil the gem reads `ActionMailer::Base` (`perform_deliveries`, and for `:smtp` an address other than localhost).

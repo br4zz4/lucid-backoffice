@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0
+
+Manage data in the panel: search, filter and sort by the columns the operator can read, follow foreign keys, and create, edit or delete records the app declared, always as an Action (reason, preview, permission, event).
+
+- **Query:** a text search, equality filters and sorting over the visible columns: public ones always, masked ones only while their category is revealed. Criteria on masked columns go through `POST /data/:table/query` and are kept in the session (`?q=<token>`), never in the URL or the logs; `backoffice.browse` records column names only (ADR 0001).
+- **Relations:** foreign-key values link to the record; "Related" lists the tables that point at it, with counts.
+- **Record actions:** `creatable`, `editable` and `destroyable` on a Resource generate the Actions (`create_<table>`, `edit_<table>`, `destroy_<table>`), with permissions `:create_record`, `:update_record`, `:destroy_record`. They take a block to configure the generated Action (`label`, `field`, `submit`, `secret`, `preview`, ...). Collection Actions (`on :users, collection: true`) appear in the header of the list.
+- **Locked fields:** an Action field over a masked column is shown as dots, disabled and never submitted; the server reads the current value. Closes a leak of `initial_values`.
+- **Submit options:** `submit :key, label:, if:` gives several execute buttons; `email_available?` (from the ActionMailer settings, or `config.email_available`) lets an app hide the email one.
+- **One-time secret:** `secret { |value| string }` shows a value once, to copy, after the Action runs (no redirect, `no-store`, never in flash, session, activity or logs).
+
+### Breaking
+
+- `editable` Actions now need the permission `:update_record` (was `:run_action`).
+- `Resource.search` accepts masked columns (they are searched only while revealed); it refuses only hidden ones.
+- `Records.list` takes `query:`; `Action#initial_values` takes `revealed:` and returns `Action::Field::LOCKED` for masked columns; `Runner.call` takes `revealed:` and `submit:`.
+- An Action field named like a non-public column of its record is locked unless the category is revealed: classify the column as `public` if the operator should always edit it.
+
 ## 0.3.1
 
 - **Fix:** `GET /assets/lucid_backoffice.js` answered 422 in apps with `protect_from_forgery` (Rails blocks cross-origin JavaScript GETs), so no JS ran. `AssetsController` skips forgery protection (it only serves public static files).
