@@ -74,7 +74,9 @@ module Lucid
         end
 
         def label(text = nil)
-          text ? @label = text : (@label || key.humanize)
+          return(@label = text) if text
+
+          @label.respond_to?(:call) ? @label.call : (@label || key.humanize)
         end
 
         def permission(name = nil)
@@ -202,10 +204,15 @@ module Lucid
 
         self.class.fields.keys.select do |name|
           next false unless record.respond_to?(name)
+          next true if hidden_column?(table, name)
 
           category = Classification.category_for(table, name)
           category != Classification::PUBLIC && !Array(revealed).include?(category)
         end
+      end
+
+      def hidden_column?(table, name)
+        name.to_s.match?(Lucid::Backoffice.configuration.secret_columns) || Resource.for(table)&.hidden&.include?(name.to_s) || false
       end
 
       # Params with the locked fields replaced by the record's current value, read on the server.

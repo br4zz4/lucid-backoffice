@@ -1031,4 +1031,137 @@ class DataIntegrationTest < PanelTest
     assert_equal "students 2", item.text.squish
     assert_equal "/backoffice/tenants/alfa/data/students?filter%5Bguardian_id%5D=42", item.at_css("a")["href"]
   end
+
+  def capture_controller_log
+    io = StringIO.new
+    logger = Logger.new(io)
+    loggers = [ActionController::Base, ActiveRecord::Base, ActionView::Base]
+    previous = loggers.map(&:logger)
+    loggers.each { |klass| klass.logger = logger }
+    yield
+    io.string
+  ensure
+    loggers.zip(previous) { |klass, old| klass.logger = old }
+  end
+
+  def test_posted_search_and_filter_values_are_filtered_in_the_log
+    # arrange
+    classify_and_reveal
+    insert_student(email: "alvo@x.test")
+
+    # act
+    log = capture_controller_log do
+      post QUERY, params: { criteria: { search: "BUSCA-SIGILOSA-77", filters: { email: "FILTRO-SIGILOSO-88" } } }, headers: as(1)
+      post QUERY, params: { filter_column: "email", filter_value: "COLUNA-SIGILOSA-99" }, headers: as(1)
+    end
+
+    # assert
+    assert_includes log, "Processing by Lucid::Backoffice::RecordsController#query"
+    assert_includes log, "[FILTERED]"
+    %w[BUSCA-SIGILOSA-77 FILTRO-SIGILOSO-88 COLUNA-SIGILOSA-99].each { |term| refute_includes log, term }
+  end
+
+  def test_get_filter_values_are_filtered_in_the_log
+    # arrange
+    classify_and_reveal
+    insert_student
+
+    # act
+    log = capture_controller_log { get LIST, params: { filter: { status: "GET-SIGILOSO-55" } }, headers: as(1) }
+
+    # assert
+    assert_includes log, "[FILTERED]"
+    refute_includes log, "GET-SIGILOSO-55"
+  end
+
+  def test_long_stored_criteria_are_truncated_and_never_overflow_the_session
+    # arrange
+    classify_and_reveal
+    insert_student
+    long = "x" * 5000
+    tokens = []
+
+    # act
+    30.times do |index|
+      post QUERY, params: { criteria: { search: long + index.to_s, filters: { status: long, email: long, name: long, cpf: long, id: long } } },
+                  headers: as(1)
+      tokens << response.location
+    end
+    stored = session[:lb_queries]
+
+    # assert
+    assert_response :redirect
+    assert_operator stored.to_json.bytesize, :<=, 1500
+    stored.each_value do |entry|
+      assert_operator entry["search"].length, :<=, 100
+      assert_operator entry["filters"].size, :<=, 4
+      entry["filters"].each { |name, value| assert_operator name.length + value.length, :<=, 200 }
+    end
+    assert_includes stored.keys, tokens.last.split("q=").last
+    get tokens.last, headers: as(1)
+    assert_response :ok
+  end
+
+  def test_browse_event_only_records_applicable_criteria
+    # arrange
+    classify_and_reveal(reveal: false)
+    insert_student
+
+    # act
+    get LIST, params: { filter: { email: "alvo@x.test", ghost: "1", password_digest: "x", id: "1" }, sort: "email" }, headers: as(1)
+
+    # assert
+    criteria = events("backoffice.browse").last.payload["criteria"]
+    assert_includes criteria, "id"
+    %w[email ghost password_digest].each { |name| refute_includes criteria, name }
+  end
+
+  def test_related_card_hides_tables_the_operator_cannot_browse
+    # arrange
+    link_fixture
+    insert_student(guardian_id: 42)
+    configure_panel do |config|
+      config.authorize = ->(_operator, permission, context) { permission == :browse && context[:table] != "students" }
+    end
+
+    # act
+    get "/backoffice/data/guardians/42", headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_empty dom.css("section.lb-related")
+  end
+
+  def test_search_without_usable_columns_warns_and_is_listed_as_ignored
+    # arrange
+    classify_and_reveal
+    Class.new(Lucid::Backoffice::Resource) do
+      table :students
+      search :name
+    end
+    insert_student(name: "Zeferino Distinto")
+    post QUERY, params: { criteria: { search: "Zeferino" } }, headers: as(1)
+    token_url = response.location
+    Lucid::Backoffice::Reveal.update_all(revoked_at: Time.current, expires_at: 1.minute.ago)
+
+    # act
+    get token_url, headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_includes dom.at_css(".lb-flash-warn").text, "search"
+  end
+
+  def test_query_bar_has_no_duplicate_ids
+    # arrange
+    classify_and_reveal
+    insert_student(email: "alvo@x.test")
+
+    # act
+    run_query(criteria: { search: "a", sort: "id", dir: "asc", filters: { email: "alvo@x.test", guardian_id: "42" } })
+    ids = dom.css("[id]").map { |node| node["id"] }
+
+    # assert
+    assert_equal ids.uniq, ids
+  end
 end

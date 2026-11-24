@@ -506,4 +506,75 @@ class ActionFieldTest < ActionTest
     # assert
     assert_equal [:invalid, "role is not one of the choices", "teacher", 0], [result.status, result.message, account.reload.role, action_events.size]
   end
+
+  def gadget_code_action
+    build_action("ChangeCode") do
+      on :gadgets
+      field :name, :string, required: false
+      field :secret_code, :string, required: false
+      field :kind, :string, required: false
+      perform { record.update!(name: name, secret_code: secret_code, kind: kind) }
+    end
+  end
+
+  def test_secret_column_stays_locked_even_with_every_category_revealed
+    # arrange
+    configure_actions
+    gadget = Gadget.create!(name: "Torno", kind: "k", secret_code: "SEGREDO-ATUAL")
+    action = gadget_code_action.new(record: gadget, params: {})
+
+    # act
+    values = action.initial_values(revealed: %w[contact free_text documents])
+
+    # assert
+    assert_same Action::Field::LOCKED, values[:secret_code]
+    refute_same Action::Field::LOCKED, values[:name]
+    refute_includes values.values.map(&:to_s), "SEGREDO-ATUAL"
+  end
+
+  def test_resource_hidden_column_stays_locked_even_with_every_category_revealed
+    # arrange
+    configure_actions
+    Class.new(Lucid::Backoffice::Resource) do
+      table :gadgets
+      hide :kind
+    end
+    gadget = Gadget.create!(name: "Torno", kind: "oculto-9", secret_code: "x")
+    action = gadget_code_action.new(record: gadget, params: {})
+
+    # act
+    values = action.initial_values(revealed: %w[contact free_text documents])
+
+    # assert
+    assert_same Action::Field::LOCKED, values[:kind]
+    refute_same Action::Field::LOCKED, values[:name]
+  ensure
+    Lucid::Backoffice::Resource.reset!
+  end
+
+  def test_runner_keeps_the_current_value_of_a_hidden_column_even_when_revealed
+    # arrange
+    configure_actions
+    gadget = Gadget.create!(name: "Torno", kind: "k", secret_code: "SEGREDO-ATUAL")
+    action_class = gadget_code_action
+
+    # act
+    snapshot = snapshot_for(action_class, record: gadget, params: { name: "Novo" })
+    result = run_action(action_class, record: gadget, params: { name: "Novo", secret_code: "INVADIDO" }, snapshot: snapshot, revealed: %w[contact])
+
+    # assert
+    assert_equal [:ok, "Novo", "SEGREDO-ATUAL"], [result.status, gadget.reload.name, gadget.secret_code]
+  end
+
+  def test_label_accepts_a_callable_resolved_on_each_read
+    # arrange
+    counter = 0
+    action_class = build_action("Dynamic") { label(-> { "rotulo #{counter += 1}" }) }
+
+    # act
+    labels = [action_class.label, action_class.label]
+
+    # assert
+    assert_equal ["rotulo 1", "rotulo 2"], labels
+  end
 end

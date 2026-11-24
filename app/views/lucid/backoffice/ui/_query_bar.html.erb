@@ -6,18 +6,18 @@
     <% def_filters.each do |name, value| %><%= hidden_field_tag "criteria[filters][#{name}]", value, id: nil %><% end %>
   <% end %>
   <%= form_with url: query_path, method: :post, class: "lb-query-form" do %>
-    <%= hidden_field_tag "criteria[sort]", query.sort %>
-    <%= hidden_field_tag "criteria[dir]", query.dir %>
-    <% def_filters.each do |name, value| %><%= hidden_field_tag "criteria[filters][#{name}]", value %><% end %>
-    <%= search_field_tag "criteria[search]", query.search, placeholder: t("lucid_backoffice.search"), "aria-label": t("lucid_backoffice.search") %>
+    <%= hidden_field_tag "criteria[sort]", query.sort, id: nil %>
+    <%= hidden_field_tag "criteria[dir]", query.dir, id: nil %>
+    <% def_filters.each do |name, value| %><%= hidden_field_tag "criteria[filters][#{name}]", value, id: nil %><% end %>
+    <%= search_field_tag "criteria[search]", query.search, id: nil, placeholder: t("lucid_backoffice.search"), "aria-label": t("lucid_backoffice.search") %>
     <%= submit_tag t("lucid_backoffice.search"), name: nil, class: "lb-button" %>
   <% end %>
   <% def_filters.each do |name, value| %>
     <%= form_with url: query_path, method: :post, class: "lb-chip" do %>
-      <%= hidden_field_tag "criteria[search]", query.search %>
-      <%= hidden_field_tag "criteria[sort]", query.sort %>
-      <%= hidden_field_tag "criteria[dir]", query.dir %>
-      <% def_filters.except(name).each do |other, other_value| %><%= hidden_field_tag "criteria[filters][#{other}]", other_value %><% end %>
+      <%= hidden_field_tag "criteria[search]", query.search, id: nil %>
+      <%= hidden_field_tag "criteria[sort]", query.sort, id: nil %>
+      <%= hidden_field_tag "criteria[dir]", query.dir, id: nil %>
+      <% def_filters.except(name).each do |other, other_value| %><%= hidden_field_tag "criteria[filters][#{other}]", other_value, id: nil %><% end %>
       <span><%= name %> = <%= value %></span>
       <%= button_tag "✕", type: "submit", class: "lb-chip-remove", "aria-label": t("lucid_backoffice.remove_filter", name: name) %>
     <% end %>
@@ -25,10 +25,10 @@
   <details class="lb-menu">
     <summary class="lb-button"><%= t("lucid_backoffice.add_filter") %></summary>
     <%= form_with url: query_path, method: :post, class: "lb-menu-list" do %>
-      <%= hidden_field_tag "criteria[search]", query.search %>
-      <%= hidden_field_tag "criteria[sort]", query.sort %>
-      <%= hidden_field_tag "criteria[dir]", query.dir %>
-      <% def_filters.each do |name, value| %><%= hidden_field_tag "criteria[filters][#{name}]", value %><% end %>
+      <%= hidden_field_tag "criteria[search]", query.search, id: nil %>
+      <%= hidden_field_tag "criteria[sort]", query.sort, id: nil %>
+      <%= hidden_field_tag "criteria[dir]", query.dir, id: nil %>
+      <% def_filters.each do |name, value| %><%= hidden_field_tag "criteria[filters][#{name}]", value, id: nil %><% end %>
       <%= select_tag :filter_column, options_for_select(usable.map(&:name)), "aria-label": t("lucid_backoffice.filter_column") %>
       <%= text_field_tag :filter_value, nil, "aria-label": t("lucid_backoffice.filter_value") %>
       <%= submit_tag t("lucid_backoffice.add_filter"), name: nil, class: "lb-button" %>

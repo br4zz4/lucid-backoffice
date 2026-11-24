@@ -21,6 +21,7 @@ module Lucid
         columns = visible(schema, table, resource)
         query = Query.new(filters: filters.to_h.merge(query&.filters.to_h), search: query&.search, sort: query&.sort, dir: query&.dir)
         ignored = query.ignored(columns, revealed)
+        ignored << "search" if query.search && query.searchable_columns(columns, revealed, declared: resource&.searchable.presence).empty?
         references = Catalog.references(schema, table)
         conditions = conditions_for(query, columns, revealed, resource)
         per = Lucid::Backoffice.configuration.page_size

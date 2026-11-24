@@ -95,7 +95,7 @@ class EditableTest < ActionTest
     action = resource.editable_action
 
     # assert
-    assert_equal ["edit_profiles", "profiles", "Edit"], [action.key, action.target, action.label]
+    assert_equal ["edit_profiles", "profiles", I18n.t("lucid_backoffice.edit")], [action.key, action.target, action.label]
     assert_equal %i[name city], action.fields.keys
   end
 
@@ -295,7 +295,7 @@ class EditableTest < ActionTest
     action = gadget_resource { creatable :name, :kind }.creatable_action
 
     # assert
-    assert_equal ["create_gadgets", "gadgets", "Novo registro", :create_record, :record, true], [action.key, action.target, action.label, action.permission, action.landing, action.collection?]
+    assert_equal ["create_gadgets", "gadgets", I18n.t("lucid_backoffice.new_record"), :create_record, :record, true], [action.key, action.target, action.label, action.permission, action.landing, action.collection?]
     assert_equal %i[name kind], action.fields.keys
     assert_same action, Lucid::Backoffice::Action.for_key("create_gadgets")
   end
@@ -325,7 +325,7 @@ class EditableTest < ActionTest
     listing = action.new(params: { name: "Torno", kind: "ferramenta" }).prepare!.build_preview.listings.sole
 
     # assert
-    assert_equal ["Novo registro", ["name: Torno", "kind: ferramenta"]], [listing.title, listing.items]
+    assert_equal [I18n.t("lucid_backoffice.new_record"), ["name: Torno", "kind: ferramenta"]], [listing.title, listing.items]
   end
 
   def test_creating_with_invalid_values_fails_with_the_validation_message_and_writes_nothing
@@ -385,7 +385,7 @@ class EditableTest < ActionTest
     action = gadget_resource { destroyable }.destroyable_action
 
     # assert
-    assert_equal ["destroy_gadgets", "gadgets", "Excluir registro", :destroy_record, :high, :list, false],
+    assert_equal ["destroy_gadgets", "gadgets", I18n.t("lucid_backoffice.destroy_record"), :destroy_record, :high, :list, false],
                  [action.key, action.target, action.label, action.permission, action.danger, action.landing, action.collection?]
   end
 
@@ -546,7 +546,7 @@ class EditableTest < ActionTest
     action = gadget_resource { creatable :name, :kind }.creatable_action
 
     # assert
-    assert_equal ["Novo registro", []], [action.label, action.submits]
+    assert_equal [I18n.t("lucid_backoffice.new_record"), []], [action.label, action.submits]
   end
 
   def test_editable_block_overrides_the_label_and_the_field
@@ -595,6 +595,71 @@ class EditableTest < ActionTest
     end.destroyable_action
 
     # assert
-    assert_equal "Excluir registro", other.label
+    assert_equal I18n.t("lucid_backoffice.destroy_record"), other.label
+  end
+
+  def labels_in(locale)
+    I18n.with_locale(locale) do
+      [editable_resource(:name).editable_action.label,
+       gadget_resource { creatable :name }.creatable_action.label,
+       gadget_resource { destroyable }.destroyable_action.label]
+    end
+  end
+
+  def test_generated_action_labels_follow_the_english_locale
+    # arrange
+    configure_records
+    configure_profiles
+
+    # act
+    labels = labels_in(:en)
+
+    # assert
+    assert_equal ["Edit", "New record", "Delete record"], labels
+  end
+
+  def test_generated_action_labels_follow_the_portuguese_locale
+    # arrange
+    configure_records
+    configure_profiles
+
+    # act
+    labels = labels_in(:"pt-BR")
+
+    # assert
+    assert_equal ["Editar", "Novo registro", "Excluir registro"], labels
+  end
+
+  def test_editable_refuses_a_hidden_or_secret_column
+    # arrange
+    configure_profiles
+    hidden = Class.new(Lucid::Backoffice::Resource) do
+      table :profiles
+      hide :city
+    end
+
+    # act
+    hidden_error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { hidden.editable :name, :city }
+    secret_error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { editable_resource(:secret_code) }
+
+    # assert
+    assert_includes hidden_error.message, ":city"
+    assert_includes secret_error.message, ":secret_code"
+  end
+
+  def test_reject_hidden_also_refuses_a_column_classified_as_secret
+    # arrange
+    path = write_yaml("profiles:\n  name: secret\n  city: public\n")
+    configure_minimal do |config|
+      config.categories = %w[public unclassified contact secret]
+      config.secret_columns = /\Anever_matches\z/
+      config.classification_path = path
+    end
+
+    # act
+    error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { editable_resource(:name) }
+
+    # assert
+    assert_includes error.message, ":name"
   end
 end
