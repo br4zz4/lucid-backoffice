@@ -8,6 +8,14 @@ pt-BR:
       default: "%d/%m/%Y %H:%M"
       short: "%d/%m %H:%M"
   lucid_backoffice:
+    shared: Compartilhado
+    context: Contexto
+    menu: Menu
+    overview: Visão geral
+    tenant_overview: Visão do tenant
+    switch_context: Trocar
+    enter_tenant: Entrar em um tenant
+    leave_tenant: Sair do tenant
     data: Dados
     activity: Atividade
     sign_out: Sair

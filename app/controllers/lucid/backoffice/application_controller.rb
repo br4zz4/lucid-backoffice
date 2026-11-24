@@ -17,7 +17,8 @@ module Lucid
         render plain: "Not found", status: :not_found
       end
 
-      helper_method :current_operator, :allowed?, :lucid_backoffice_menu, :tenancy, :current_tenant, :lb_routes
+      helper_method :current_operator, :allowed?, :lucid_backoffice_menu, :tenancy, :current_tenant, :lb_routes,
+                    :lb_root_path, :context_label, :context_schema, :context_tables, :context_switch_tenants, :table_link, :lb_current?
 
       private
 
@@ -47,6 +48,40 @@ module Lucid
 
       def lucid_backoffice_menu
         Lucid::Backoffice::Registry.menu_items.select { |item| allowed?(item.permission) }
+      end
+
+      def lb_root_path
+        lb_routes.root_path.sub(%r{/\z}, "").presence || "/"
+      end
+
+      def context_label
+        return tenancy.label(current_tenant) if current_tenant
+
+        Lucid::Backoffice.configuration.terms.fetch(:shared, I18n.t("lucid_backoffice.shared"))
+      end
+
+      def context_schema
+        tenancy.schema_for(current_tenant)
+      end
+
+      def context_tables
+        return [] unless allowed?(:browse, { tenant: current_tenant })
+
+        Catalog.tables(context_schema)
+      end
+
+      def context_switch_tenants
+        tenancy.tenants.select { |tenant| allowed?(:view_tenant, { tenant: tenant }) }
+      end
+
+      def table_link(table)
+        return lb_routes.table_path(table: table) unless current_tenant
+
+        lb_routes.tenant_table_path(tenant_id: tenancy.identifier(current_tenant), table: table)
+      end
+
+      def lb_current?(path, prefix: false)
+        prefix ? request.path.start_with?(path) : request.path.sub(%r{/\z}, "") == path
       end
 
       def current_tenant

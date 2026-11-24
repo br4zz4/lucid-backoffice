@@ -1,0 +1,19 @@
+<header class="lb-topbar">
+  <details class="lb-sidebar-toggle">
+    <summary><%= t("lucid_backoffice.menu") %></summary>
+    <%= render "lucid/backoffice/shared/sidebar" %>
+  </details>
+  <nav class="lb-crumbs">
+    <% if content_for?(:lb_crumbs) %><%= yield :lb_crumbs %><% else %><b><%= context_label %></b><% end %>
+  </nav>
+  <div class="lb-topbar-right">
+    <% if Lucid::Backoffice.configuration.sign_out_path %>
+      <% sign_out_path = instance_exec(&Lucid::Backoffice.configuration.sign_out_path) %>
+      <% if Lucid::Backoffice.configuration.sign_out_method.to_sym == :get %>
+        <a class="lb-signout" href="<%= sign_out_path %>"><%= t("lucid_backoffice.sign_out") %></a>
+      <% else %>
+        <%= button_to t("lucid_backoffice.sign_out"), sign_out_path, method: Lucid::Backoffice.configuration.sign_out_method, class: "lb-signout", form: { class: "lb-signout-form" } %>
+      <% end %>
+    <% end %>
+  </div>
+</header>

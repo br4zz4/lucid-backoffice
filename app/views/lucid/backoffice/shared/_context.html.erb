@@ -1,0 +1,22 @@
+<% multi = tenancy.multi_tenant? %>
+<div class="lb-context<%= " lb-context-in" if current_tenant %>">
+  <small><%= t("lucid_backoffice.context") %></small>
+  <b class="lb-context-name"><%= context_label %></b>
+  <% unless current_tenant %><small class="lb-context-schema"><%= tenancy.shared_schema %></small><% end %>
+  <% if multi %>
+    <% if current_tenant %>
+      <a class="lb-context-leave" href="<%= lb_root_path %>"><%= t("lucid_backoffice.leave_tenant") %></a>
+    <% end %>
+    <% switchable = context_switch_tenants %>
+    <% if switchable.any? %>
+      <details class="lb-context-switch">
+        <summary><%= current_tenant ? t("lucid_backoffice.switch_context") : t("lucid_backoffice.enter_tenant") %></summary>
+        <ul>
+          <% switchable.each do |tenant| %>
+            <li><a href="<%= lb_routes.tenant_path(tenant_id: tenancy.identifier(tenant)) %>"><%= tenancy.label(tenant) %></a></li>
+          <% end %>
+        </ul>
+      </details>
+    <% end %>
+  <% end %>
+</div>

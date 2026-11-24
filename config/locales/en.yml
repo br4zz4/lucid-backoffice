@@ -1,5 +1,13 @@
 en:
   lucid_backoffice:
+    shared: Shared
+    context: Context
+    menu: Menu
+    overview: Overview
+    tenant_overview: Tenant overview
+    switch_context: Switch
+    enter_tenant: Enter a tenant
+    leave_tenant: Leave tenant
     data: Data
     activity: Activity
     sign_out: Sign out

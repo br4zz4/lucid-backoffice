@@ -11,6 +11,7 @@ Lucid::Backoffice::Engine.routes.draw do
 
   scope "tenants/:tenant_id", constraints: { tenant_id: %r{[^/]+} } do
     get "/", to: "tenants#show", as: :tenant
+    get "activity", to: "activity_events#index", as: :tenant_activity
     get "data", to: "records#tables", as: :tenant_data
     get "data/:table", to: "records#index", as: :tenant_table
     get "data/:table/:id", to: "records#show", as: :tenant_record
