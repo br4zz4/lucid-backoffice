@@ -271,6 +271,189 @@ class RevealIntegrationTest < PanelTest
     assert_equal "/backoffice/reveals", dom.at_css("form.lb-reason-form")&.[]("action")
   end
 
+  def reveal_all(operator: 1, tenant: "alfa", reason: REASON, referer: PATH)
+    params = { reason: reason }
+    params[:tenant_id] = tenant if tenant
+    post "/backoffice/reveals", params: params, headers: as(operator).merge("Referer" => referer)
+  end
+
+  def revoke_all(operator: 1, tenant: "alfa", referer: PATH)
+    params = tenant ? { tenant_id: tenant } : {}
+    delete "/backoffice/reveals", params: params, headers: as(operator).merge("Referer" => referer)
+  end
+
+  def revealable_categories = Lucid::Backoffice.configuration.categories - ["public"]
+
+  def test_post_without_category_reveals_every_category_and_redirects_back_with_notice
+    # arrange
+    before = emails
+
+    # act
+    reveal_all
+    status = response.status
+    location = response.location
+    get(location, headers: as(1))
+    notice = dom.at_css(".lb-flash-ok")
+    after = emails
+
+    # assert
+    assert_equal 302, status
+    assert location.end_with?(PATH)
+    assert notice
+    assert_equal MASKED, before["email"]
+    assert_equal SECRETS[:email], after["email"]
+    assert_equal SECRETS[:cpf], after["cpf"]
+    assert_equal revealable_categories.size, Lucid::Backoffice::Reveal.count
+    assert_equal revealable_categories.size, events("backoffice.reveal.grant").size
+    assert_equal [REASON], events("backoffice.reveal.grant").map(&:reason).uniq
+    assert_equal ["alfa"], Lucid::Backoffice::Reveal.pluck(:tenant_identifier).uniq
+  end
+
+  def test_post_without_category_is_scoped_to_the_tenant
+    # arrange
+    reveal_all(tenant: "alfa")
+
+    # act
+    alfa = emails("/backoffice/tenants/alfa/data/students")
+    beta = emails("/backoffice/tenants/beta/data/students")
+
+    # assert
+    assert_equal SECRETS[:email], alfa["email"]
+    assert_equal MASKED, beta["email"]
+  end
+
+  def test_post_without_category_works_without_tenant
+    # arrange
+    configure_panel(permissions: { 1 => %i[browse reveal] }) { |config| config.classification_path = @classification }
+    insert_student
+
+    # act
+    reveal_all(tenant: nil, referer: "/backoffice/data/students")
+    row = emails("/backoffice/data/students")
+
+    # assert
+    assert_response :ok
+    assert_equal SECRETS[:email], row["email"]
+    assert_equal [nil], Lucid::Backoffice::Reveal.pluck(:tenant_identifier).uniq
+  end
+
+  def test_post_without_category_and_short_reason_alerts_and_creates_nothing
+    # arrange
+    short = "curto"
+
+    # act
+    reveal_all(reason: short)
+    get(response.location, headers: as(1))
+
+    # assert
+    assert dom.at_css(".lb-flash-error")
+    assert_equal 0, Lucid::Backoffice::Reveal.count
+    assert_empty events("backoffice.reveal.grant")
+    assert_equal MASKED, emails["email"]
+  end
+
+  def test_post_without_category_skips_denied_categories
+    # arrange
+    configure_tenants(permissions: {}) do |config|
+      config.authorize = ->(_operator, _permission, context) { context[:category] != "documents" }
+    end
+
+    # act
+    reveal_all
+    row = emails
+
+    # assert
+    assert_equal SECRETS[:email], row["email"]
+    assert_equal MASKED, row["cpf"]
+    assert_equal revealable_categories.size - 1, Lucid::Backoffice::Reveal.count
+    refute_includes Lucid::Backoffice::Reveal.pluck(:category), "documents"
+  end
+
+  def test_post_without_category_is_forbidden_when_every_category_is_denied
+    # arrange
+    configure_tenants(permissions: { 3 => %i[browse view_tenant] })
+
+    # act
+    reveal_all(operator: 3)
+
+    # assert
+    assert_response :forbidden
+    assert_equal 0, Lucid::Backoffice::Reveal.count
+    assert_empty events("backoffice.reveal.grant")
+  end
+
+  def test_post_with_category_keeps_revealing_only_that_category
+    # arrange
+    reveal(category: "contact")
+
+    # act
+    row = emails
+
+    # assert
+    assert_equal SECRETS[:email], row["email"]
+    assert_equal MASKED, row["cpf"]
+    assert_equal 1, Lucid::Backoffice::Reveal.count
+  end
+
+  def test_delete_collection_revokes_every_active_reveal_and_redirects_back
+    # arrange
+    reveal_all
+    revealed = emails
+
+    # act
+    revoke_all
+    status = response.status
+    location = response.location
+    after = emails
+
+    # assert
+    assert_equal 302, status
+    assert location.end_with?(PATH)
+    assert_equal SECRETS[:email], revealed["email"]
+    assert_equal MASKED, after["email"]
+    assert_equal MASKED, after["cpf"]
+    assert_equal revealable_categories.size, events("backoffice.reveal.revoke").size
+  end
+
+  def test_delete_collection_does_not_touch_another_tenant
+    # arrange
+    reveal_all(tenant: "alfa")
+    reveal_all(tenant: "beta", referer: "/backoffice/tenants/beta/data/students")
+
+    # act
+    revoke_all(tenant: "alfa")
+
+    # assert
+    assert_equal MASKED, emails("/backoffice/tenants/alfa/data/students")["email"]
+    assert_equal SECRETS[:email], emails("/backoffice/tenants/beta/data/students")["email"]
+  end
+
+  def test_delete_collection_does_not_touch_another_operator
+    # arrange
+    reveal_all(operator: 1)
+    reveal_all(operator: 2)
+
+    # act
+    revoke_all(operator: 1)
+
+    # assert
+    assert_equal MASKED, emails(operator: 1)["email"]
+    assert_equal SECRETS[:email], emails(operator: 2)["email"]
+  end
+
+  def test_delete_collection_by_an_operator_without_reveals_leaves_others_untouched
+    # arrange
+    reveal_all
+    configure_tenants(permissions: { 1 => %i[browse view_tenant reveal], 3 => %i[browse view_tenant] })
+
+    # act
+    revoke_all(operator: 3)
+
+    # assert
+    assert_equal 0, events("backoffice.reveal.revoke").size
+    assert_equal SECRETS[:email], emails(operator: 1)["email"]
+  end
+
   def test_revealed_values_still_hide_secret_columns
     # arrange
     %w[contact documents minors financial free_text unclassified].each { |category| reveal(category: category) }
