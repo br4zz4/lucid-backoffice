@@ -224,7 +224,7 @@ class RevealIntegrationTest < PanelTest
 
     # act
     get "/backoffice/tenants/alfa", headers: as(1)
-    buttons = dom.css("form.button_to[method=post] input[name=_method][value=delete]")
+    buttons = dom.css("section.lb-reveal form.button_to[method=post] input[name=_method][value=delete]")
 
     # assert
     assert_equal 1, buttons.size
