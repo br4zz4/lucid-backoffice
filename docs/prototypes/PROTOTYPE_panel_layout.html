@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<!--
+PROTOTYPE (descartável). Pergunta: qual estrutura visual o painel deve ter (sidebar, área global x área do tenant,
+olho de revelação ao lado do Sair, ações no cabeçalho)? Três variantes estruturais via ?variant=A|B|C e telas via ?screen=.
+HTML estático porque o agente de spec só escreve em docs/. Itens marcados "B" pertencem à Spec B (gerenciar dados).
+Abra com duplo clique. Setas ← → trocam a variante.
+-->
+<html lang="pt-BR" class="lb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PROTOTYPE · layout do painel</title>
+<style>
+:root{--bg:#000;--surface:#0a0a0a;--raised:#141414;--border:rgb(255 255 255/.1);--text:#f2f2f4;--muted:#8b8b93;--accent:#c6ff00;--on-accent:#000;--warn:#f5b942;--danger:#ff5d5d;--sans:"Inter Variable",Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"JetBrains Mono Variable","JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;--r:12px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;color-scheme:dark}
+a{color:inherit;text-decoration:none;cursor:pointer}
+button{font:inherit;cursor:pointer}
+h1{font-size:1.6rem;letter-spacing:-.035em;margin:0;line-height:1.15}
+h2{font-size:1rem;letter-spacing:-.02em;margin:0 0 .75rem}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+.tag{display:inline-block;padding:.05rem .45rem;border:1px solid var(--border);border-radius:999px;font-family:var(--mono);font-size:.65rem;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;vertical-align:middle}
+.tag-ok{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.tag-warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.specb{outline:1px dashed color-mix(in srgb,var(--warn) 70%,transparent);outline-offset:3px;position:relative}
+.specb::after{content:"B";position:absolute;top:-.55rem;right:-.55rem;width:1rem;height:1rem;border-radius:50%;background:var(--warn);color:#000;font:700 .6rem/1rem var(--mono);text-align:center}
+
+.btn{display:inline-flex;align-items:center;gap:.45rem;border:1px solid var(--border);border-radius:999px;padding:.45rem 1rem;background:transparent;color:var(--text);font-size:.85rem;font-weight:550;white-space:nowrap}
+.btn:hover{border-color:rgb(255 255 255/.3)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn-danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 50%,transparent)}
+.btn[aria-disabled=true]{color:var(--muted);border-style:dashed;cursor:not-allowed}
+.btn-ghost{border-color:transparent;color:var(--muted)}
+.btn-ghost:hover{color:var(--text);border-color:transparent}
+.action{display:inline-flex;flex-direction:column;align-items:flex-end;gap:.2rem}
+.action small{font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.menu{position:relative}
+.menu-list{position:absolute;right:0;top:calc(100% + .4rem);min-width:16rem;background:var(--raised);border:1px solid var(--border);border-radius:var(--r);padding:.35rem;z-index:30;box-shadow:0 20px 40px rgb(0 0 0/.6)}
+.menu-list a{display:block;padding:.5rem .7rem;border-radius:8px;font-size:.88rem}
+.menu-list a:hover{background:rgb(255 255 255/.05)}
+.menu-list a.dis{color:var(--muted);cursor:not-allowed}
+.menu-list a.dis span{display:block;font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em}
+.menu-list a.danger{color:var(--danger)}
+.menu-list hr{border:0;border-top:1px solid var(--border);margin:.3rem 0}
+
+.eye{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .8rem;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:.82rem}
+.eye:hover{color:var(--text);border-color:rgb(255 255 255/.3)}
+.eye.on{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.eye.on .end{color:var(--muted);border-left:1px solid var(--border);padding-left:.45rem;margin-left:.1rem}
+.eye svg{width:1rem;height:1rem}
+.eye.icon-only{padding:.55rem;justify-content:center}
+.signout{color:var(--muted);font-size:.85rem;background:none;border:0;padding:.4rem .2rem}
+.signout:hover{color:var(--text)}
+
+.crumbs{display:flex;gap:.45rem;align-items:center;font-size:.82rem;color:var(--muted);flex-wrap:wrap}
+.crumbs a:hover{color:var(--text)}
+.crumbs b{color:var(--text);font-weight:500}
+.crumbs .sep{opacity:.4}
+.page-head{display:flex;gap:1rem;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin:.6rem 0 1.4rem}
+.page-head .actions{display:flex;gap:.5rem;align-items:flex-start;flex-wrap:wrap}
+.page-head .sub{margin-top:.3rem;font-size:.85rem;color:var(--muted)}
+
+.toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.8rem}
+.search{flex:1;min-width:14rem;max-width:26rem;display:flex;align-items:center;gap:.5rem;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:.42rem .9rem;color:var(--muted);font-size:.85rem}
+.chip{display:inline-flex;gap:.4rem;align-items:center;padding:.3rem .7rem;border-radius:999px;background:var(--raised);border:1px solid var(--border);font-size:.8rem}
+.chip b{font-weight:500}
+.table-wrap{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:.6rem 1rem;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:rgb(255 255 255/.03)}
+th{color:var(--muted);font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;background:var(--raised)}
+th .cat{color:color-mix(in srgb,var(--warn) 75%,var(--muted));margin-left:.35rem}
+th .sort{opacity:.45;margin-left:.25rem}
+.masked{color:var(--muted);font-family:var(--mono);letter-spacing:.12em}
+.fk{color:var(--accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.pager{display:flex;justify-content:space-between;align-items:center;margin-top:.8rem;font-size:.82rem;color:var(--muted)}
+.pager .pages{display:flex;gap:.35rem}
+.pager .pages a{padding:.15rem .6rem;border:1px solid var(--border);border-radius:999px}
+.pager .pages a.cur{background:var(--accent);color:#000;border-color:var(--accent)}
+.empty{border:1px dashed var(--border);border-radius:var(--r);padding:3rem 1rem;text-align:center;color:var(--muted)}
+.empty h3{color:var(--text);margin:.6rem 0 .3rem;font-size:1rem}
+.empty .icon{font-size:1.6rem;opacity:.5}
+.empty .btns{display:flex;gap:.5rem;justify-content:center;margin-top:1rem}
+
+.detail{display:grid;grid-template-columns:12rem 1fr;border:1px solid var(--border);border-radius:var(--r);background:var(--surface)}
+.detail dt,.detail dd{margin:0;padding:.65rem 1rem;border-bottom:1px solid var(--border)}
+.detail dt{color:var(--muted);font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}
+.detail dt .cat{display:block;color:color-mix(in srgb,var(--warn) 75%,var(--muted));font-size:.6rem}
+.detail dt:nth-last-of-type(1),.detail dd:last-child{border-bottom:0}
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:1.25rem;align-items:start}
+.card{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);padding:1rem 1.1rem}
+.card h2{font-size:.72rem;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.related a{display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.88rem}
+.related a:last-child{border-bottom:0}
+.related a span{color:var(--muted);font-family:var(--mono);font-size:.75rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:.8rem;margin-bottom:1.5rem}
+.stat p{margin:0}
+.stat .l{color:var(--muted);font-family:var(--mono);font-size:.65rem;letter-spacing:.14em;text-transform:uppercase}
+.stat .v{font-size:1.8rem;font-weight:600;letter-spacing:-.04em}
+.health{display:flex;gap:.6rem;align-items:center}
+.list-rows a{display:flex;justify-content:space-between;align-items:center;padding:.7rem 0;border-bottom:1px solid var(--border)}
+.list-rows a:last-child{border-bottom:0}
+
+.nav-sec{margin-top:1.2rem}
+.nav-sec .t{font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:0 .6rem;margin-bottom:.3rem}
+.nav-item{display:flex;align-items:center;gap:.55rem;padding:.38rem .6rem;border-radius:8px;color:var(--muted);font-size:.88rem}
+.nav-item:hover{color:var(--text);background:rgb(255 255 255/.04)}
+.nav-item.cur{color:var(--text);background:rgb(255 255 255/.07)}
+.nav-item.table{font-family:var(--mono);font-size:.78rem;padding:.28rem .6rem}
+.brand{font-weight:650;letter-spacing:-.04em;font-size:1.02rem;display:flex;align-items:center;gap:.4rem}
+.brand::after{content:"";width:.42rem;height:.42rem;border-radius:50%;background:var(--accent)}
+.side-search{display:block;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.35rem .6rem;color:var(--muted);font-size:.78rem;margin:.2rem 0 .4rem}
+
+/* Variant A */
+.a-shell{display:grid;grid-template-columns:16rem 1fr;min-height:100vh}
+.a-side{border-right:1px solid var(--border);padding:1rem .8rem;position:sticky;top:0;height:100vh;overflow:auto;background:var(--surface)}
+.a-switch{margin-top:1rem;position:relative}
+.a-switch>button{width:100%;display:flex;justify-content:space-between;align-items:center;background:var(--raised);border:1px solid var(--border);border-radius:10px;padding:.5rem .7rem;color:var(--text);text-align:left}
+.a-switch>button small{display:block;font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.a-switch .menu-list{left:0;right:auto;width:100%}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.7rem 1.75rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgb(0 0 0/.85);backdrop-filter:blur(12px);z-index:20}
+.topbar .right{display:flex;align-items:center;gap:.6rem}
+.content{padding:1.5rem 1.75rem 5rem;max-width:84rem}
+
+/* Variant B */
+.b-tenantbar{display:flex;justify-content:center;gap:.6rem;align-items:center;padding:.4rem;background:color-mix(in srgb,var(--accent) 14%,#000);border-bottom:1px solid color-mix(in srgb,var(--accent) 40%,transparent);font-size:.82rem}
+.b-tenantbar a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.b-body{display:flex;min-height:100vh}
+.b-rail{width:4.2rem;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:.9rem 0;position:sticky;top:0;height:100vh}
+.b-rail .r{width:2.8rem;height:2.8rem;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:.55rem;gap:.1rem;font-family:var(--mono);letter-spacing:.04em}
+.b-rail .r b{font-size:1.05rem;font-family:var(--sans);font-weight:400}
+.b-rail .r:hover{color:var(--text);background:rgb(255 255 255/.05)}
+.b-rail .r.cur{color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.b-rail .spacer{flex:1}
+.b-rail .logo{width:.7rem;height:.7rem;border-radius:50%;background:var(--accent);margin-bottom:.8rem}
+.b-tables{width:14rem;border-right:1px solid var(--border);padding:1rem .7rem;background:var(--surface);position:sticky;top:0;height:100vh;overflow:auto}
+.b-main{flex:1;min-width:0}
+.b-main .head{padding:1.2rem 1.75rem 0}
+.b-tenants{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.8rem}
+.b-tenants .card{display:flex;flex-direction:column;gap:.6rem}
+
+/* Variant C */
+.c-shell{display:grid;grid-template-columns:16rem 1fr;min-height:100vh}
+.c-side{border-right:1px solid var(--border);padding:1rem .8rem;position:sticky;top:0;height:100vh;overflow:auto}
+.c-ctx{margin-top:1rem;border-radius:var(--r);padding:.8rem;border:1px solid var(--border);background:var(--surface)}
+.c-ctx.in{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.c-ctx small{display:block;font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.c-ctx b{display:block;margin:.15rem 0 .5rem}
+.c-ctx .row{display:flex;gap:.4rem}
+.c-ctx .row .btn{padding:.25rem .65rem;font-size:.75rem}
+.c-split{display:grid;grid-template-columns:1fr;gap:0}
+.c-split.open{grid-template-columns:minmax(0,1fr) 26rem}
+.c-drawer{border-left:1px solid var(--border);background:var(--surface);padding:1.2rem;position:sticky;top:3.2rem;height:calc(100vh - 3.2rem);overflow:auto}
+.c-drawer .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:1rem}
+.c-drawer .detail{grid-template-columns:8rem 1fr}
+.c-split .content{max-width:none}
+tr.sel{background:color-mix(in srgb,var(--accent) 7%,transparent)!important}
+
+/* Modal */
+dialog{background:var(--raised);color:var(--text);border:1px solid var(--border);border-radius:16px;padding:0;width:min(30rem,92vw);box-shadow:0 30px 80px rgb(0 0 0/.7)}
+dialog::backdrop{background:rgb(0 0 0/.65);backdrop-filter:blur(3px)}
+.m-body{padding:1.3rem 1.4rem}
+.m-body h2{font-size:1.15rem;margin:0 0 .35rem;display:flex;gap:.5rem;align-items:center}
+.m-body p{margin:.2rem 0 .9rem;color:var(--muted);font-size:.87rem}
+.m-cats{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:1rem}
+.m-body label{display:block;font-family:var(--mono);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem}
+.m-body textarea{width:100%;min-height:5rem;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:.6rem .75rem;font:inherit;font-size:.9rem;resize:vertical}
+.m-body textarea:focus{outline:none;border-color:var(--accent)}
+.m-count{text-align:right;font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-top:.25rem}
+.m-foot{display:flex;justify-content:flex-end;gap:.5rem;padding:.9rem 1.4rem;border-top:1px solid var(--border)}
+.btn:disabled{background:transparent;border-color:var(--border);color:var(--muted);cursor:not-allowed}
+
+.flash{margin-bottom:1rem;padding:.6rem .9rem;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--r);background:var(--surface);font-size:.87rem}
+
+/* Prototype switcher */
+.pt-bar{position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);display:flex;align-items:center;gap:.4rem;padding:.35rem;background:#fff;color:#000;border-radius:999px;box-shadow:0 10px 30px rgb(0 0 0/.6);z-index:100;font:500 .78rem/1 var(--sans)}
+.pt-bar button{border:0;background:transparent;color:#000;padding:.45rem .7rem;border-radius:999px}
+.pt-bar button:hover{background:#eee}
+.pt-bar button.cur{background:#000;color:#fff}
+.pt-bar .lbl{padding:0 .6rem;font-weight:700;white-space:nowrap}
+.pt-bar .sep{width:1px;height:1.2rem;background:#ccc}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<dialog id="reveal">
+  <form method="dialog" id="reveal-form">
+    <div class="m-body">
+      <h2><span id="m-icon"></span><span id="m-title">Revelar dados</span></h2>
+      <p>Mostra em claro, por 15 minutos, todas as categorias que você pode revelar neste escopo. O motivo fica registrado na atividade.</p>
+      <div class="m-cats">
+        <span class="tag">contact</span><span class="tag">documents</span><span class="tag">minors</span><span class="tag">financial</span><span class="tag">free_text</span><span class="tag">unclassified</span>
+      </div>
+      <label for="m-reason">Motivo</label>
+      <textarea id="m-reason" placeholder="Ex.: investigar chamado 1234 sobre login do responsável"></textarea>
+      <div class="m-count" id="m-count">0 / 10</div>
+    </div>
+    <div class="m-foot">
+      <button type="button" class="btn btn-ghost" id="m-cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="m-ok" disabled>Revelar por 15 min</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+var ICON = {
+  eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.7 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17.7 17.7 0 0 1-2.2 3.2M6.6 6.6A17.5 17.5 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+};
+var VARIANTS = { A: "Sidebar + seletor de contexto", B: "Rail + painel de tabelas + faixa do tenant", C: "Sidebar + lista com detalhe lateral" };
+var SCREENS = { global: "Área global", tenant: "Área do tenant", list: "Listagem", empty: "Listagem vazia", record: "Registro" };
+var TENANTS = [["Escola Alfa", "escola-alfa", "ok"], ["Escola Beta", "escola-beta", "pending"], ["Colégio Gama", "colegio-gama", "ok"]];
+var TABLES = ["users", "students", "classrooms", "enrollments", "guardians", "invoices", "messages", "attendances"];
+var SHARED_TABLES = ["schools", "provisionings", "sysadmins", "plans"];
+var ROWS = [
+  [42, "Maria Souza", "maria@alfa.edu", "admin", 7, "12/03/2026"],
+  [43, "João Lima", "joao@alfa.edu", "teacher", 7, "14/03/2026"],
+  [44, "Ana Prado", "ana.prado@alfa.edu", "teacher", 9, "02/04/2026"],
+  [45, "Carlos Reis", "carlos@alfa.edu", "guardian", 9, "18/05/2026"],
+  [46, "Lúcia Melo", "lucia@alfa.edu", "guardian", 11, "01/06/2026"]
+];
+
+var params = new URLSearchParams(location.search);
+var S = {
+  variant: VARIANTS[params.get("variant")] ? params.get("variant") : "A",
+  screen: SCREENS[params.get("screen")] ? params.get("screen") : "list",
+  area: params.get("area") === "global" ? "global" : "tenant",
+  tenant: "Escola Alfa",
+  revealed: false,
+  menu: null,
+  flash: null
+};
+if (S.screen === "global") S.area = "global";
+
+function sync() {
+  try {
+    var p = new URLSearchParams({ variant: S.variant, screen: S.screen, area: S.area });
+    history.replaceState(null, "", "?" + p.toString());
+  } catch (e) {}
+}
+
+function scope() { return S.area === "tenant" ? S.tenant : "Global"; }
+function tables() { return S.area === "tenant" ? TABLES : SHARED_TABLES; }
+function m(v) { return S.revealed ? v : '<span class="masked">•••••</span>'; }
+
+function eyeBtn(iconOnly) {
+  if (S.revealed) {
+    return '<button class="eye on' + (iconOnly ? ' icon-only' : '') + '" data-act="end" title="Revelado até 21:47 · clique para encerrar">' + ICON.eye +
+      (iconOnly ? '' : '<span>Revelado até 21:47</span><span class="end">Encerrar</span>') + '</button>';
+  }
+  return '<button class="eye' + (iconOnly ? ' icon-only' : '') + '" data-act="open-modal" title="Revelar dados de ' + scope() + '">' + ICON.eyeOff +
+    (iconOnly ? '' : '<span>Dados mascarados</span>') + '</button>';
+}
+function signout() { return '<button class="signout">Sair</button>'; }
+
+function crumbs() {
+  var c = [];
+  if (S.area === "tenant") { c.push('<a data-act="leave">Global</a>', '<a data-screen="tenant">' + S.tenant + '</a>'); }
+  else { c.push('<a data-screen="global">Global</a>'); }
+  if (S.screen === "list" || S.screen === "empty" || S.screen === "record") {
+    c.push('<a data-screen="list">Dados</a>');
+    c.push(S.screen === "record" ? '<a data-screen="list">' + (S.area === "tenant" ? "users" : "sysadmins") + '</a>' : '<b>' + (S.area === "tenant" ? "users" : "sysadmins") + '</b>');
+    if (S.screen === "record") c.push('<b>#42</b>');
+  }
+  return '<nav class="crumbs">' + c.join('<span class="sep">/</span>') + '</nav>';
+}
+
+function actionBtn(a) {
+  var cls = "btn" + (a.primary ? " btn-primary" : "") + (a.danger ? " btn-danger" : "") + (a.specB ? " specb" : "");
+  if (a.reason) return '<span class="action"><span class="' + cls + '" aria-disabled="true" title="' + a.reason + '">' + a.label + '</span><small>' + a.reason + '</small></span>';
+  return '<a class="' + cls + '">' + a.label + '</a>';
+}
+function actions(list) {
+  var inline = list.length > 3 ? list.slice(0, 1) : list;
+  var rest = list.length > 3 ? list.slice(1) : [];
+  var html = inline.map(actionBtn).join("");
+  if (rest.length) {
+    html += '<div class="menu"><button class="btn" data-act="menu" data-menu="actions">Ações ▾</button>' +
+      (S.menu === "actions" ? '<div class="menu-list">' + rest.map(function (a) {
+        if (a.sep) return "<hr>";
+        if (a.reason) return '<a class="dis">' + a.label + '<span>' + a.reason + '</span></a>';
+        return '<a class="' + (a.danger ? "danger" : "") + (a.specB ? " specb" : "") + '">' + a.label + '</a>';
+      }).join("") + '</div>' : '') + '</div>';
+  }
+  return '<div class="actions">' + html + '</div>';
+}
+
+function head(title, sub, acts) {
+  return crumbs() + '<div class="page-head"><div><h1>' + title + '</h1>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>' + (acts ? actions(acts) : '') + '</div>';
+}
+
+function recordActions() {
+  return [
+    { label: "Editar", specB: true },
+    { label: "Reenviar convite" },
+    { label: "Bloquear usuário", reason: "Usuário já bloqueado" },
+    { sep: true },
+    { label: "Excluir registro", danger: true, specB: true }
+  ];
+}
+
+function listBody(empty, onRow) {
+  var t = S.area === "tenant" ? "users" : "sysadmins";
+  var html = '<div class="toolbar"><div class="search specb">⌕ Buscar em ' + t + '…</div>' +
+    '<span class="chip specb"><span class="muted">role</span> <b>= teacher</b> ✕</span>' +
+    '<button class="btn btn-ghost specb">+ Filtro</button></div>';
+  if (empty) {
+    return html + '<div class="empty"><div class="icon">∅</div><h3>Nenhum registro encontrado</h3>' +
+      '<div>Nenhum ' + t + ' corresponde aos filtros aplicados.</div>' +
+      '<div class="btns"><a class="btn specb">Limpar filtros</a><a class="btn btn-primary specb">Novo registro</a></div></div>';
+  }
+  html += '<div class="table-wrap"><table><thead><tr>' +
+    '<th>id<span class="sort">↓</span></th><th>name<span class="cat">contact</span></th><th>email<span class="cat">contact</span></th>' +
+    '<th>role<span class="sort">↕</span></th><th>classroom_id</th><th>created_at<span class="sort">↕</span></th></tr></thead><tbody>';
+  ROWS.forEach(function (r) {
+    html += '<tr data-row="' + r[0] + '"' + (onRow && S.screen === "record" && r[0] === 42 ? ' class="sel"' : '') + '><td class="mono">' + r[0] + '</td><td>' + m(r[1]) + '</td><td>' + m(r[2]) + '</td><td>' + r[3] +
+      '</td><td><a class="fk specb">classrooms #' + r[4] + '</a></td><td class="mono">' + r[5] + '</td></tr>';
+  });
+  html += '</tbody></table></div><div class="pager"><span>1–5 de 1.284</span><span class="pages"><a class="cur">1</a><a>2</a><a>3</a><span>…</span><a>257</a></span></div>';
+  return html;
+}
+
+function detailDl() {
+  return '<dl class="detail">' +
+    '<dt>id</dt><dd class="mono">42</dd>' +
+    '<dt>name<span class="cat">contact</span></dt><dd>' + m("Maria Souza") + '</dd>' +
+    '<dt>email<span class="cat">contact</span></dt><dd>' + m("maria@alfa.edu") + '</dd>' +
+    '<dt>cpf<span class="cat">documents</span></dt><dd>' + m("123.456.789-00") + '</dd>' +
+    '<dt>role</dt><dd>admin</dd>' +
+    '<dt>classroom_id</dt><dd><a class="fk specb">classrooms #7</a></dd>' +
+    '<dt>password_digest<span class="cat">secret</span></dt><dd class="muted">nunca exibido</dd>' +
+    '<dt>created_at</dt><dd class="mono">12/03/2026 09:14</dd></dl>';
+}
+function relatedCard() {
+  return '<div class="card related specb"><h2>Relacionados</h2>' +
+    '<a>enrollments <span>3</span></a><a>messages <span>128</span></a><a>attendances <span>412</span></a></div>';
+}
+
+function screenBody(opts) {
+  opts = opts || {};
+  var tname = S.area === "tenant" ? "users" : "sysadmins";
+  if (S.screen === "global") {
+    return head("Visão geral", "Área global · dados compartilhados (schema public)", [{ label: "Sincronizar escolas" }]) +
+      '<div class="stats">' + [["Tenants", "3"], ["Usuários ativos", "1.284"], ["Revelações hoje", "6"], ["Ações executadas", "14"]].map(function (s) {
+        return '<div class="card stat"><p class="l">' + s[0] + '</p><p class="v">' + s[1] + '</p></div>';
+      }).join("") + '</div>' + tenantsBlock();
+  }
+  if (S.screen === "tenant") {
+    var t = TENANTS[0];
+    return head(S.tenant, '<span class="mono">' + t[1] + '</span>', [
+      { label: "Aplicar migrations pendentes", reason: "Sem migrations pendentes" },
+      { label: "Reprovisionar schema" }
+    ]) + '<div class="grid2"><div class="card"><h2>Saúde do schema</h2><div class="health"><span class="tag tag-ok">em dia</span><span class="muted">48 tabelas · última migration 20261120</span></div></div>' +
+      '<div class="card related"><h2>Dados</h2>' + TABLES.slice(0, 4).map(function (x) { return '<a data-screen="list">' + x + '<span>→</span></a>'; }).join("") + '</div></div>';
+  }
+  if (S.screen === "record" && !opts.split) {
+    return head(tname + ' <span class="muted mono" style="font-size:1rem">#42</span>', "Criado em 12/03/2026", recordActions()) +
+      '<div class="grid2">' + detailDl() + relatedCard() + '</div>';
+  }
+  return head(tname, '1.284 registros', [{ label: "Novo registro", primary: true, specB: true }]) + listBody(S.screen === "empty", opts.split);
+}
+
+function tenantsBlock() {
+  if (S.variant === "B") {
+    return '<h2>Tenants</h2><div class="b-tenants">' + TENANTS.map(function (t) {
+      return '<div class="card"><div><b>' + t[0] + '</b><div class="mono muted" style="font-size:.75rem">' + t[1] + '</div></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center"><span class="tag ' + (t[2] === "ok" ? "tag-ok" : "tag-warn") + '">' + (t[2] === "ok" ? "schema em dia" : "2 migrations pendentes") + '</span>' +
+        '<a class="btn btn-primary" data-act="enter" data-t="' + t[0] + '">Entrar →</a></div></div>';
+    }).join("") + '</div>';
+  }
+  return '<div class="card"><h2>Tenants</h2><div class="list-rows">' + TENANTS.map(function (t) {
+    return '<a data-act="enter" data-t="' + t[0] + '"><span><b>' + t[0] + '</b> <span class="mono muted" style="font-size:.75rem">' + t[1] + '</span></span>' +
+      '<span style="display:flex;gap:.6rem;align-items:center"><span class="tag ' + (t[2] === "ok" ? "tag-ok" : "tag-warn") + '">' + (t[2] === "ok" ? "em dia" : "pendente") + '</span><span class="btn">Entrar →</span></span></a>';
+  }).join("") + '</div></div>';
+}
+
+function navArea(cur) {
+  var html = '';
+  if (S.area === "tenant") {
+    html += '<div class="nav-sec"><div class="t">' + S.tenant + '</div>' +
+      '<a class="nav-item' + (S.screen === "tenant" ? " cur" : "") + '" data-screen="tenant">◎ Visão do tenant</a>' +
+      '<a class="nav-item">◷ Atividade do tenant</a></div>';
+  } else {
+    html += '<div class="nav-sec"><div class="t">Global</div>' +
+      '<a class="nav-item' + (S.screen === "global" ? " cur" : "") + '" data-screen="global">◎ Visão geral</a>' +
+      '<a class="nav-item">◷ Atividade</a><a class="nav-item">▤ Provisionamentos</a><a class="nav-item">▤ Sysadmins</a></div>';
+  }
+  html += '<div class="nav-sec"><div class="t">Dados</div><div class="side-search specb">⌕ Filtrar tabelas</div>' +
+    tables().map(function (x, i) { return '<a class="nav-item table' + (i === (S.area === "tenant" ? 0 : 2) && ["list", "empty", "record"].indexOf(S.screen) >= 0 ? " cur" : "") + '" data-screen="list">' + x + '</a>'; }).join("") + '</div>';
+  return html;
+}
+
+function variantA() {
+  var sw = '<div class="a-switch menu"><button data-act="menu" data-menu="switch"><span><small>Contexto</small>' + scope() + '</span><span class="muted">▾</span></button>' +
+    (S.menu === "switch" ? '<div class="menu-list"><a data-act="leave">Global</a><hr>' + TENANTS.map(function (t) { return '<a data-act="enter" data-t="' + t[0] + '">' + t[0] + '</a>'; }).join("") + '</div>' : '') + '</div>';
+  return '<div class="a-shell"><aside class="a-side"><div class="brand">Painel</div>' + sw + navArea() + '</aside>' +
+    '<div><header class="topbar"><span class="muted" style="font-size:.82rem">' + (S.area === "tenant" ? "Você está em <b style=\"color:var(--text)\">" + S.tenant + "</b>" : "Área global") + '</span><div class="right">' + eyeBtn() + signout() + '</div></header>' +
+    '<main class="content">' + flash() + screenBody() + '</main></div></div>';
+}
+
+function variantB() {
+  var dataScreen = ["list", "empty", "record"].indexOf(S.screen) >= 0;
+  var rail = '<nav class="b-rail"><span class="logo"></span>' +
+    '<a class="r' + (S.screen === "global" || S.screen === "tenant" ? " cur" : "") + '" data-screen="' + (S.area === "tenant" ? "tenant" : "global") + '"><b>◎</b>visão</a>' +
+    '<a class="r' + (dataScreen ? " cur" : "") + '" data-screen="list"><b>▦</b>dados</a>' +
+    '<a class="r"><b>◷</b>ativid.</a>' + (S.area === "global" ? '<a class="r"><b>▤</b>prov.</a><a class="r"><b>▤</b>sysad.</a>' : '') +
+    '<span class="spacer"></span>' + eyeBtn(true) + '<a class="r" title="Sair"><b>⏻</b>sair</a></nav>';
+  var side = dataScreen ? '<aside class="b-tables"><div class="nav-sec" style="margin-top:0"><div class="t">Tabelas · ' + scope() + '</div><div class="side-search specb">⌕ Filtrar tabelas</div>' +
+    tables().map(function (x, i) { return '<a class="nav-item table' + (i === (S.area === "tenant" ? 0 : 2) ? " cur" : "") + '" data-screen="list">' + x + '</a>'; }).join("") + '</div></aside>' : '';
+  var bar = S.area === "tenant" ? '<div class="b-tenantbar">Você está em <b>' + S.tenant + '</b> · <a data-act="leave">Sair do tenant</a></div>' : '';
+  return bar + '<div class="b-body">' + rail + side + '<main class="b-main"><div class="content">' + flash() + screenBody() + '</div></main></div>';
+}
+
+function variantC() {
+  var ctx = S.area === "tenant"
+    ? '<div class="c-ctx in"><small>Dentro do tenant</small><b>' + S.tenant + '</b><div class="row"><a class="btn" data-act="menu" data-menu="switch">Trocar</a><a class="btn" data-act="leave">Sair</a></div></div>'
+    : '<div class="c-ctx"><small>Área global</small><b>Dados compartilhados</b><div class="row"><a class="btn btn-primary" data-act="menu" data-menu="switch">Entrar em um tenant ▾</a></div></div>';
+  if (S.menu === "switch") ctx += '<div class="card" style="margin-top:.4rem;padding:.35rem">' + TENANTS.map(function (t) { return '<a class="nav-item" data-act="enter" data-t="' + t[0] + '">' + t[0] + '</a>'; }).join("") + '</div>';
+  var split = S.screen === "record";
+  var body = screenBody({ split: split });
+  var drawer = split ? '<aside class="c-drawer"><div class="dh"><div><div class="muted mono" style="font-size:.7rem">users</div><h1 style="font-size:1.3rem">#42 ' + m("Maria Souza") + '</h1></div><a class="btn btn-ghost" data-screen="list">✕</a></div>' +
+    '<div style="margin-bottom:1rem">' + actions(recordActions()) + '</div>' + detailDl() + '<div style="margin-top:1rem">' + relatedCard() + '</div></aside>' : '';
+  return '<div class="c-shell"><aside class="c-side"><div class="brand">Painel</div>' + ctx + navArea() + '</aside>' +
+    '<div><header class="topbar">' + '<span></span>' + '<div class="right">' + eyeBtn() + signout() + '</div></header>' +
+    '<div class="c-split' + (split ? " open" : "") + '"><main class="content">' + flash() + body + '</main>' + drawer + '</div></div></div>';
+}
+
+function flash() {
+  if (!S.flash) return "";
+  var f = S.flash; S.flash = null;
+  return '<div class="flash">' + f + '</div>';
+}
+
+function bar() {
+  var keys = Object.keys(VARIANTS);
+  return '<div class="pt-bar"><button data-pt="prev">←</button><span class="lbl">' + S.variant + ' · ' + VARIANTS[S.variant] + '</span><button data-pt="next">→</button><span class="sep"></span>' +
+    Object.keys(SCREENS).map(function (k) { return '<button data-pt-screen="' + k + '" class="' + (S.screen === k ? "cur" : "") + '">' + SCREENS[k] + '</button>'; }).join("") + '</div>';
+}
+
+function render() {
+  sync();
+  var v = { A: variantA, B: variantB, C: variantC }[S.variant];
+  document.getElementById("app").innerHTML = v() + bar();
+}
+
+function cycle(d) {
+  var keys = Object.keys(VARIANTS);
+  S.variant = keys[(keys.indexOf(S.variant) + d + keys.length) % keys.length];
+  S.menu = null; render();
+}
+
+document.addEventListener("click", function (e) {
+  var el = e.target.closest("[data-pt],[data-pt-screen],[data-act],[data-screen],[data-row]");
+  if (!el) { if (S.menu) { S.menu = null; render(); } return; }
+  if (el.dataset.pt) return cycle(el.dataset.pt === "next" ? 1 : -1);
+  if (el.dataset.ptScreen) {
+    S.screen = el.dataset.ptScreen; S.menu = null;
+    if (S.screen === "global") S.area = "global";
+    if (S.screen === "tenant") S.area = "tenant";
+    return render();
+  }
+  var act = el.dataset.act;
+  if (act === "menu") { S.menu = S.menu === el.dataset.menu ? null : el.dataset.menu; return render(); }
+  if (act === "enter") { S.area = "tenant"; S.tenant = el.dataset.t; S.screen = "tenant"; S.menu = null; S.revealed = false; return render(); }
+  if (act === "leave") { S.area = "global"; S.screen = "global"; S.menu = null; S.revealed = false; return render(); }
+  if (act === "open-modal") return openModal();
+  if (act === "end") { S.revealed = false; S.flash = "Revelação encerrada em " + scope() + "."; return render(); }
+  if (el.dataset.row) { S.screen = "record"; S.menu = null; return render(); }
+  if (el.dataset.screen) { S.screen = el.dataset.screen; S.menu = null; return render(); }
+});
+
+document.addEventListener("keydown", function (e) {
+  var t = e.target;
+  if (t.matches && t.matches("input,textarea,[contenteditable]")) return;
+  if (document.getElementById("reveal").open) return;
+  if (e.key === "ArrowRight") cycle(1);
+  if (e.key === "ArrowLeft") cycle(-1);
+});
+
+var dlg = document.getElementById("reveal");
+var reason = document.getElementById("m-reason");
+var ok = document.getElementById("m-ok");
+function check() {
+  var n = reason.value.trim().length;
+  document.getElementById("m-count").textContent = n + " / 10";
+  ok.disabled = n < 10;
+}
+function openModal() {
+  document.getElementById("m-title").textContent = S.area === "tenant" ? "Revelar dados de " + S.tenant : "Revelar dados (global)";
+  document.getElementById("m-icon").innerHTML = ICON.eye.replace("<svg", '<svg style="width:1.1rem;height:1.1rem;color:var(--accent)"');
+  reason.value = ""; check(); dlg.showModal(); reason.focus();
+}
+reason.addEventListener("input", check);
+document.getElementById("m-cancel").addEventListener("click", function () { dlg.close(); });
+ok.addEventListener("click", function () {
+  dlg.close(); S.revealed = true; S.flash = "Dados de " + scope() + " revelados até 21:47. Motivo registrado."; render();
+});
+
+render();
+</script>
+</body>
+</html>
