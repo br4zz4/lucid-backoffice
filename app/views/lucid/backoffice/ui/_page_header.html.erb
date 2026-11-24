@@ -14,7 +14,7 @@
   </div>
   <div class="lb-page-actions">
     <% if local_assigns[:target] %>
-      <%= render "lucid/backoffice/ui/actions", target: target, record: local_assigns[:record], tenant: local_assigns[:tenant] %>
+      <%= render "lucid/backoffice/ui/actions", target: target, record: local_assigns[:record], tenant: local_assigns[:tenant], collection: local_assigns.fetch(:collection, false) %>
     <% end %>
   </div>
 </div>

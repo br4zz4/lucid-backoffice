@@ -94,11 +94,10 @@ module Lucid
           resource_table = table
           fields = names.map(&:to_sym)
           types = editable_types(resource_table, fields)
-          klass = Class.new(Action)
-          klass.define_singleton_method(:key) { "edit_#{resource_table}" }
-          klass.define_singleton_method(:name) { "Lucid::Backoffice::Edit#{resource_table.to_s.camelize}" }
+          klass = action_class("edit_#{resource_table}", "Edit")
           klass.on(resource_table)
           klass.label("Edit")
+          klass.permission(:update_record)
           fields.each { |field| klass.field(field, types.fetch(field, :string), required: false) }
           if with
             klass.perform(with: with)
@@ -110,6 +109,85 @@ module Lucid
 
         def editable_action
           @editable
+        end
+
+        # Adds a "New record" action over these columns, on the table as a whole. By default it runs
+        # +Model.create!+; +with:+ routes it through a Command. Hidden columns cannot be fields.
+        def creatable(*names, with: nil)
+          resource_table = table
+          fields = names.map(&:to_sym)
+          model = record_model!(:creatable)
+          reject_hidden!(:creatable, fields)
+          types = editable_types(resource_table, fields)
+          klass = action_class("create_#{resource_table}", "Create")
+          klass.on(resource_table, collection: true)
+          klass.label("Novo registro")
+          klass.permission(:create_record)
+          klass.landing(:record)
+          fields.each { |field| klass.field(field, types.fetch(field, :string), required: false) }
+          klass.preview { |p| p.list("Novo registro", self.class.fields.keys.map { |field| "#{field}: #{public_send(field)}" }) }
+          if with
+            klass.perform(with: with)
+          else
+            klass.perform do
+              values = self.class.fields.keys.to_h { |field| [field, public_send(field)] }
+              model.create!(values)
+            rescue ActiveRecord::RecordInvalid => e
+              Action::Failure.new(type: :invalid, errors: [e.record.errors.full_messages.to_sentence])
+            end
+          end
+          @creatable = klass
+        end
+
+        def creatable_action
+          @creatable
+        end
+
+        # Adds a "Delete record" action (danger high, typing the record id). +with:+ routes it through a Command.
+        def destroyable(with: nil)
+          resource_table = table
+          record_model!(:destroyable)
+          klass = action_class("destroy_#{resource_table}", "Destroy")
+          klass.on(resource_table)
+          klass.label("Excluir registro")
+          klass.danger(:high)
+          klass.permission(:destroy_record)
+          klass.landing(:list)
+          if with
+            klass.perform(with: with)
+          else
+            klass.perform do
+              record.destroy ? record : Action::Failure.new(type: :not_destroyed, errors: [record.errors.full_messages.to_sentence])
+            end
+          end
+          @destroyable = klass
+        end
+
+        def destroyable_action
+          @destroyable
+        end
+
+        def action_class(key, prefix)
+          resource_table = table
+          klass = Class.new(Action)
+          klass.define_singleton_method(:key) { key }
+          klass.define_singleton_method(:name) { "Lucid::Backoffice::#{prefix}#{resource_table.to_s.camelize}" }
+          klass
+        end
+
+        def record_model!(kind)
+          model = table.to_s.classify.safe_constantize
+          return model if model && model < ActiveRecord::Base
+
+          raise Error::ConfigurationConflict, "#{name || self}: #{kind} needs an ActiveRecord model for table #{table.inspect}"
+        end
+
+        def reject_hidden!(kind, fields)
+          fields.each do |field|
+            next unless hidden.include?(field.to_s) || field.to_s.match?(Lucid::Backoffice.configuration.secret_columns)
+
+            raise Error::ConfigurationConflict, "#{name || self}: #{kind} #{field.inspect} is a hidden column"
+          end
         end
 
         def editable_types(table, fields)

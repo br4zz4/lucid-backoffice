@@ -1,6 +1,7 @@
 <%= render "lucid/backoffice/ui/page_header",
       title: params[:table], subtitle: t("lucid_backoffice.records_count", count: @page.total),
-      crumbs: lb_context_crumbs + [[t("lucid_backoffice.data"), (current_tenant ? tenant_data_path(tenant_id: tenancy.identifier(current_tenant)) : data_path)], [params[:table], nil]] %>
+      crumbs: lb_context_crumbs + [[t("lucid_backoffice.data"), (current_tenant ? tenant_data_path(tenant_id: tenancy.identifier(current_tenant)) : data_path)], [params[:table], nil]],
+      target: params[:table], record: nil, tenant: current_tenant, collection: true %>
 <%= render "lucid/backoffice/ui/query_bar", columns: @page.columns, query: @query, revealed: @revealed, query_path: @query_path %>
 <% if @ignored.any? %><p class="lb-flash lb-flash-warn"><%= t("lucid_backoffice.ignored_filters", filters: @ignored.join(", ")) %></p><% end %>
 <% if @page.total.zero? %>

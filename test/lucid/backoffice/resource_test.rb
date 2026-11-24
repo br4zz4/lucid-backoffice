@@ -329,4 +329,26 @@ class ResourceTest < DataTest
     assert_empty second.hidden
     assert_empty second.filters
   end
+
+  def test_creatable_on_a_table_without_model_is_a_configuration_conflict
+    # arrange
+    resource = Class.new(Resource) { table :ghosts }
+
+    # act
+    error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { resource.creatable :name }
+
+    # assert
+    assert_includes error.message, "ghosts"
+  end
+
+  def test_destroyable_on_a_table_without_model_is_a_configuration_conflict
+    # arrange
+    resource = Class.new(Resource) { table :ghosts }
+
+    # act
+    error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { resource.destroyable }
+
+    # assert
+    assert_includes error.message, "ghosts"
+  end
 end
