@@ -116,28 +116,54 @@ class ResourceTest < DataTest
     assert_equal :badge, display[:type]
   end
 
-  def test_search_on_a_non_public_column_conflicts_naming_it
+  def test_search_on_a_hidden_column_conflicts_naming_it
     # arrange
     configure_minimal
 
     # act
-    error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { build { search :cpf } }
+    error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) do
+      build do
+        hide :cpf
+        search :cpf
+      end
+    end
 
     # assert
     assert_match(/cpf/, error.message)
-    assert_match(/unclassified/, error.message)
+    assert_match(/hidden/, error.message)
   end
 
-  def test_search_on_a_classified_non_public_column_conflicts
+  def test_search_on_a_secret_named_column_conflicts_naming_it
+    # arrange
+    configure_minimal
+
+    # act
+    error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { build { search :password_digest } }
+
+    # assert
+    assert_match(/password_digest/, error.message)
+  end
+
+  def test_search_on_a_masked_column_is_accepted
+    # arrange
+    configure_minimal
+
+    # act
+    unclassified = build { search :cpf, :name }
+
+    # assert
+    assert_equal %w[cpf name], unclassified.searchable
+  end
+
+  def test_search_on_a_classified_masked_column_is_accepted
     # arrange
     write_classification("students:\n  email: contact\n")
 
     # act
-    error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { build { search :id, :email } }
+    resource = build { search :id, :email }
 
     # assert
-    assert_match(/email/, error.message)
-    assert_match(/contact/, error.message)
+    assert_equal %w[id email], resource.searchable
   end
 
   def test_search_on_id_is_allowed

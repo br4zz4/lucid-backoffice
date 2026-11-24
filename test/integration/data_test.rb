@@ -174,6 +174,36 @@ class DataIntegrationTest < PanelTest
     refute_includes response.body, "a@x.test"
   end
 
+  def test_filter_by_a_public_text_column_in_the_url_returns_only_matching_rows
+    # arrange
+    path = write_yaml("students:\n  status: public\n")
+    configure_panel(permissions: { 1 => %i[browse] }) { |config| config.classification_path = path }
+    insert_student(status: "teacher")
+    insert_student(status: "director")
+    insert_student(status: "teacher")
+
+    # act
+    get "/backoffice/data/students?filter[status]=teacher", headers: as(1)
+
+    # assert
+    assert_equal %w[1 3], dom.css("tbody tr td:first-child").map { |td| td.text.strip }
+    assert_empty dom.css(".lb-flash-warn")
+  end
+
+  def test_filter_by_a_masked_column_in_the_url_warns_and_does_not_filter
+    # arrange
+    insert_student(email: "a@x.test")
+    insert_student(email: "b@x.test")
+
+    # act
+    get "/backoffice/data/students?filter[email]=a@x.test", headers: as(1)
+
+    # assert
+    assert_equal 2, dom.css("tbody tr").size
+    assert_includes dom.at_css(".lb-flash-warn").text, "email"
+    refute_includes response.body, "a@x.test"
+  end
+
   def test_pagination_splits_rows_in_pages_of_page_size
     # arrange
     60.times { insert_student }
