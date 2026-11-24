@@ -15,6 +15,7 @@ pt-BR:
     revealed_until: "Revelado até %{time}"
     end_reveal_all: Encerrar
     cancel: Cancelar
+    more_actions: Ações
     shared: Compartilhado
     context: Contexto
     menu: Menu

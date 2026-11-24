@@ -7,6 +7,7 @@ en:
     revealed_until: "Revealed until %{time}"
     end_reveal_all: End
     cancel: Cancel
+    more_actions: Actions
     shared: Shared
     context: Context
     menu: Menu

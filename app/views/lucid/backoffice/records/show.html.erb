@@ -1,11 +1,13 @@
-<h1><%= params[:table] %> #<%= params[:id] %></h1>
+<% record_model = params[:table].to_s.classify.safe_constantize %>
+<% record = (record_model && record_model < ActiveRecord::Base) ? tenancy.with(current_tenant) { record_model.find_by(id: params[:id]) } : nil %>
+<% data_url = current_tenant ? tenant_data_path(tenant_id: tenancy.identifier(current_tenant)) : data_path %>
+<%= render "lucid/backoffice/ui/page_header",
+      title: safe_join([params[:table], " ", content_tag(:span, "##{params[:id]}", class: "lb-muted")]),
+      crumbs: lb_context_crumbs + [[t("lucid_backoffice.data"), data_url], [params[:table], table_link(params[:table])], ["##{params[:id]}", nil]],
+      target: (record_model && record_model < ActiveRecord::Base ? params[:table] : nil), record: record, tenant: current_tenant %>
 <dl class="lb-detail">
   <% @cells.each do |cell| %>
     <dt><%= cell.column.name %> <% unless cell.column.category == "public" %><small><%= cell.column.category %></small><% end %></dt>
     <dd><%= render "lucid/backoffice/ui/value", cell: cell %></dd>
   <% end %>
 </dl>
-<% record_model = params[:table].to_s.classify.safe_constantize %>
-<% if record_model && record_model < ActiveRecord::Base %>
-  <%= render "lucid/backoffice/ui/actions", target: params[:table], record: tenancy.with(current_tenant) { record_model.find_by(id: params[:id]) }, tenant: current_tenant %>
-<% end %>
