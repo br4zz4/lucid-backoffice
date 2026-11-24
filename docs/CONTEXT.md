@@ -30,3 +30,12 @@ _Avoid_: unmask, unlock.
 **Record action** — an Action derived from a Resource declaration (`creatable`, `editable`, `destroyable`) instead of written by hand. Same guarantees as any Action.
 
 **Locked field** — a form field over a masked column: shown as dots, disabled, never submitted. Revealing its category turns it into a normal input with the current value.
+
+**Collection action** — an Action on a table as a whole rather than on one of its records (e.g. creating a record); offered in the header of the table's list.
+
+**Submit option** — one of several ways to execute the same Action, each its own button at the final step, hidden when the app says it is not available; reason, preview and activity event are the same whichever the operator picks.
+
+**One-time secret** — a value an Action hands back to the operator exactly once, right after it runs, to be copied and passed on (e.g. a set-password link). Never stored, logged, put in a link to click, nor recorded in the activity trail.
+_Avoid_: token, password (when meaning this result).
+
+**Email available** — whether the host app can send email at all; the gem asks the app (with a default read from the app's mailer settings) and never knows the provider.
