@@ -258,6 +258,89 @@ class LayoutIntegrationTest < PanelTest
     refute_includes nav_links.map(&:last), "/backoffice/tenants/alfa/activity"
   end
 
+  def test_sidebar_activity_item_follows_the_per_tenant_authorization
+    # arrange
+    configure_multi do |config|
+      config.authorize = lambda do |_operator, permission, context|
+        next true unless permission == :view_activity
+
+        context[:tenant]&.code != "beta"
+      end
+    end
+
+    # act
+    get "/backoffice/tenants/beta", headers: as(1)
+    in_beta = nav_links.map(&:last)
+    get "/backoffice/tenants/alfa", headers: as(1)
+    in_alfa = nav_links.map(&:last)
+
+    # assert
+    refute_includes in_beta, "/backoffice/tenants/beta/activity"
+    assert_includes in_alfa, "/backoffice/tenants/alfa/activity"
+  end
+
+  def with_tables(*names)
+    names.each { |name| connection.execute("CREATE TABLE public.#{name} (id bigserial PRIMARY KEY)") }
+    yield
+  ensure
+    names.each { |name| connection.execute("DROP TABLE IF EXISTS public.#{name}") }
+  end
+
+  def test_current_table_marker_does_not_leak_to_tables_sharing_a_prefix
+    # arrange
+    configure_multi
+
+    # act
+    with_tables("users", "user", "users_archive") do
+      get "/backoffice/data/users", headers: as(1)
+    end
+
+    # assert
+    assert_equal ["/backoffice/data/users"], dom.css("aside.lb-sidebar [aria-current=page]").map { |a| a["href"] }
+    assert_equal %w[user users users_archive], table_links.map(&:first).grep(/\Auser/).sort
+  end
+
+  def test_current_marker_on_a_longer_table_does_not_mark_the_shorter_one
+    # arrange
+    configure_multi
+
+    # act
+    with_tables("users", "users_archive") do
+      get "/backoffice/data/users_archive", headers: as(1)
+    end
+
+    # assert
+    assert_equal ["/backoffice/data/users_archive"], dom.css("aside.lb-sidebar [aria-current=page]").map { |a| a["href"] }
+  end
+
+  def lb_current(path_info, target, **options)
+    controller = Lucid::Backoffice::ApplicationController.new
+    controller.request = ActionDispatch::TestRequest.create("PATH_INFO" => path_info, "SCRIPT_NAME" => "")
+    controller.send(:lb_current?, target, **options)
+  end
+
+  def test_overview_is_current_when_the_panel_is_mounted_at_the_root
+    # arrange
+    root = "/"
+
+    # act
+    current = lb_current(root, root)
+
+    # assert
+    assert current
+  end
+
+  def test_overview_is_not_current_on_another_path_when_mounted_at_the_root
+    # arrange
+    path = "/activity"
+
+    # act
+    current = lb_current(path, "/")
+
+    # assert
+    refute current
+  end
+
   def test_overview_item_is_hidden_without_view_dashboard
     # arrange
     configure_multi(permissions: { 1 => %i[browse view_activity] })
@@ -303,9 +386,10 @@ class LayoutIntegrationTest < PanelTest
     # arrange
     configure_panel(permissions: { 1 => %i[view_dashboard browse view_activity reveal] }) { |config| config.tenancy = :none }
     insert_student
+    Lucid::Backoffice::Activity::Event.create!(name: "widget.created", actor_type: "System", occurred_at: Time.current)
 
     # act
-    texts = %w[/backoffice /backoffice/data /backoffice/data/students].to_h do |path|
+    texts = %w[/backoffice /backoffice/data /backoffice/data/students /backoffice/activity].to_h do |path|
       get path, headers: as(1)
       [path, dom.text]
     end
