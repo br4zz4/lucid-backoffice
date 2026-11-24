@@ -33,7 +33,7 @@ class PanelIntegrationTest < PanelTest
   end
 
   def card_texts = dom.css(".lb-card").map { |card| card.text.squish }
-  def nav_labels = dom.css("nav.lb-nav a").map { |a| a.text.strip }
+  def nav_labels = dom.css("aside.lb-sidebar nav a:not(.lb-nav-table)").map { |a| a.text.strip }
 
   def test_dashboard_card_value_receives_week_period_by_default
     # arrange
@@ -130,12 +130,14 @@ class PanelIntegrationTest < PanelTest
 
     # act
     get "/backoffice", headers: as(1)
-    full = nav_labels
+    full = [nav_labels, dom.css("aside.lb-sidebar .lb-nav-data").size]
     get "/backoffice", headers: as(2)
 
     # assert
-    assert_equal %w[Data Activity], full.last(2)
-    assert_equal ["Back office"], nav_labels
+    assert_includes full.first, "Activity"
+    assert_equal 1, full.last
+    refute_includes nav_labels, "Activity"
+    assert_nil dom.at_css("aside.lb-sidebar .lb-nav-data")
   end
 
   def test_plugin_menu_card_and_section_appear_for_operator_with_permission
@@ -192,7 +194,7 @@ class PanelIntegrationTest < PanelTest
     assert_equal 403, denied
     assert_response :ok
     assert_equal "Escolas", dom.at_css("main.lb-main h1").text
-    assert dom.at_css("nav.lb-nav a.lb-brand")
+    assert dom.at_css("aside.lb-sidebar .lb-brand")
     assert dom.at_css("link[href^='/backoffice/assets/lucid_backoffice.css']")
     assert_includes nav_labels, "Escolas"
   end
@@ -388,7 +390,7 @@ class PanelIntegrationTest < PanelTest
     I18n.with_locale(:"pt-BR") { get "/backoffice", headers: as(1) }
 
     # assert
-    assert_includes nav_labels, "Dados"
+    assert_includes dom.at_css("aside.lb-sidebar .lb-nav-data").text, "Dados"
     assert_includes nav_labels, "Atividade"
     assert_equal ["Semana", "Mês"], dom.css("p.lb-period a").map(&:text)
     assert_equal "pt-BR", dom.at_css("html")["lang"]

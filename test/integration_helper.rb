@@ -15,6 +15,7 @@ class FakeTenancy
   def identifier(tenant) = tenant.code
   def label(tenant) = "Escola #{tenant.code}"
   def health(_tenant) = nil
+  def multi_tenant? = true
   def shared_schema = "public"
   def schema_for(tenant) = tenant ? tenant.code : "public"
   def with(_tenant) = yield

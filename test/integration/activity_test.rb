@@ -186,6 +186,89 @@ class ActivityIntegrationTest < PanelTest
     assert_equal ["b.beta"], rows.map { |row| row[1] }
   end
 
+  def configure_tenant_activity
+    create_tenant_schemas
+    configure_panel(permissions: { 1 => %i[view_activity view_tenant], 2 => %i[view_tenant browse] }, tenancy: FakeTenancy.new)
+  end
+
+  def test_tenant_activity_lists_only_that_tenants_events
+    # arrange
+    configure_tenant_activity
+    create_event(name: "a.alfa", tenant_identifier: "alfa")
+    create_event(name: "b.beta", tenant_identifier: "beta")
+    create_event(name: "c.shared")
+
+    # act
+    get "/backoffice/tenants/alfa/activity", headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_equal ["a.alfa"], rows.map { |row| row[1] }
+  end
+
+  def test_tenant_activity_ignores_the_tenant_param
+    # arrange
+    configure_tenant_activity
+    create_event(name: "a.alfa", tenant_identifier: "alfa")
+    create_event(name: "b.beta", tenant_identifier: "beta")
+
+    # act
+    get "/backoffice/tenants/alfa/activity", params: { tenant: "beta" }, headers: as(1)
+
+    # assert
+    assert_equal ["a.alfa"], rows.map { |row| row[1] }
+  end
+
+  def test_tenant_activity_still_applies_the_other_filters
+    # arrange
+    configure_tenant_activity
+    create_event(name: "backoffice.browse", tenant_identifier: "alfa")
+    create_event(name: "purchases.register", tenant_identifier: "alfa")
+    create_event(name: "backoffice.view", tenant_identifier: "beta")
+
+    # act
+    get "/backoffice/tenants/alfa/activity", params: { name: "backoffice" }, headers: as(1)
+
+    # assert
+    assert_equal ["backoffice.browse"], rows.map { |row| row[1] }
+  end
+
+  def test_tenant_activity_hides_the_tenant_filter_field
+    # arrange
+    configure_tenant_activity
+
+    # act
+    get "/backoffice/tenants/alfa/activity", headers: as(1)
+    inside_tenant = dom.css("form [name=tenant]").size
+    get "/backoffice/activity", headers: as(1)
+
+    # assert
+    assert_equal 0, inside_tenant
+    assert_equal 1, dom.css("form [name=tenant]").size
+  end
+
+  def test_tenant_activity_requires_view_activity
+    # arrange
+    configure_tenant_activity
+
+    # act
+    get "/backoffice/tenants/alfa/activity", headers: as(2)
+
+    # assert
+    assert_response :forbidden
+  end
+
+  def test_tenant_activity_for_an_unknown_tenant_is_not_found
+    # arrange
+    configure_tenant_activity
+
+    # act
+    get "/backoffice/tenants/zeta/activity", headers: as(1)
+
+    # assert
+    assert_response :not_found
+  end
+
   def test_activity_filters_by_actor
     # arrange
     create_event(name: "a.user", actor_type: "User", actor_id: 5)
