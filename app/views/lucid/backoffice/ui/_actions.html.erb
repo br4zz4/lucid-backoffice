@@ -1,4 +1,4 @@
-<% actions = Lucid::Backoffice::Action.for_target(target).select { |a| allowed?(a.permission, { tenant: tenant, action: a.key }) } %>
+<% actions = Lucid::Backoffice::Action.for_target(target).select { |a| a.collection? == local_assigns.fetch(:collection, false) }.select { |a| allowed?(a.permission, { tenant: tenant, action: a.key }) } %>
 <% entries = tenancy.with(tenant) { actions.map { |a| instance = a.new(record: record, tenant: tenant); [a, instance.visible?, instance.visible? ? instance.unavailable_reason : nil] } } %>
 <% entries = entries.select { |_a, visible, _reason| visible } %>
 <% if entries.any? %>

@@ -14,6 +14,12 @@ module Lucid
     #     perform { record.update!(role: role) }
     #   end
     class Action
+      Failure = Data.define(:type, :errors) do
+        def failure? = true
+
+        def [](key) = key.to_sym == :errors ? errors : nil
+      end
+
       Result = Data.define(:status, :message, :value, :redirect) do
         def initialize(status:, message:, value:, redirect: nil) = super
 
@@ -46,10 +52,26 @@ module Lucid
           name.to_s.demodulize.underscore
         end
 
-        def on(target = nil)
-          target ? @target = target.to_s : @target
+        # @param collection [Boolean] the action is on the table as a whole (no record), offered in the header of its list
+        def on(target = nil, collection: false)
+          if target
+            @collection = collection
+            @target = target.to_s
+          else
+            @target
+          end
         end
         alias_method :target, :on
+
+        def collection?
+          @collection == true
+        end
+
+        # Where the operator lands after a successful run when the app gave no +redirect_to+: the +:record+
+        # the action created, or the +:list+ of its table.
+        def landing(kind = nil)
+          kind ? @landing = kind.to_sym : @landing
+        end
 
         def label(text = nil)
           text ? @label = text : (@label || key.humanize)

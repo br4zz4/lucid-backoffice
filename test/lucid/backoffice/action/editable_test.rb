@@ -71,7 +71,7 @@ class EditableTest < ActionTest
     path = write_yaml(PROFILES_CLASSIFICATION)
     configure_minimal do |config|
       config.classification_path = path
-      config.authorize = ->(_operator, permission, _context) { permission == :run_action }
+      config.authorize = ->(_operator, permission, _context) { %i[run_action update_record].include?(permission) }
     end
   end
 
@@ -270,5 +270,212 @@ class EditableTest < ActionTest
     assert_equal [:failed, "Name is frozen"], [result.status, result.message]
     assert_equal %w[Frozen Recife], profile.reload.then { |p| [p.name, p.city] }
     assert_equal "frozen_name", action_events("backoffice.action.edit_profiles").sole.outcome
+  end
+
+  def configure_records(permissions: %i[run_action create_record destroy_record])
+    path = write_yaml(ActionTest::CLASSIFICATION)
+    configure_minimal do |config|
+      config.classification_path = path
+      config.authorize = ->(_operator, permission, _context) { permissions.include?(permission) }
+    end
+  end
+
+  def gadget_resource(&block)
+    Class.new(Lucid::Backoffice::Resource) do
+      table :gadgets
+      class_eval(&block)
+    end
+  end
+
+  def test_creatable_generates_the_collection_action
+    # arrange
+    configure_records
+
+    # act
+    action = gadget_resource { creatable :name, :kind }.creatable_action
+
+    # assert
+    assert_equal ["create_gadgets", "gadgets", "Novo registro", :create_record, :record, true], [action.key, action.target, action.label, action.permission, action.landing, action.collection?]
+    assert_equal %i[name kind], action.fields.keys
+    assert_same action, Lucid::Backoffice::Action.for_key("create_gadgets")
+  end
+
+  def test_creating_writes_the_declared_fields_and_records_the_event
+    # arrange
+    configure_records
+    action = gadget_resource { creatable :name, :kind }.creatable_action
+
+    # act
+    result = run_action(action, params: { name: "Torno", kind: "ferramenta", secret_code: "hacked" })
+
+    # assert
+    gadget = Gadget.sole
+    assert_equal :ok, result.status
+    assert_equal ["Torno", "ferramenta", nil], [gadget.name, gadget.kind, gadget.secret_code]
+    assert_equal gadget, result.value
+    assert_equal REASON, action_events("backoffice.action.create_gadgets").sole.reason
+  end
+
+  def test_creating_preview_lists_the_values_to_be_created
+    # arrange
+    configure_records
+    action = gadget_resource { creatable :name, :kind }.creatable_action
+
+    # act
+    listing = action.new(params: { name: "Torno", kind: "ferramenta" }).prepare!.build_preview.listings.sole
+
+    # assert
+    assert_equal ["Novo registro", ["name: Torno", "kind: ferramenta"]], [listing.title, listing.items]
+  end
+
+  def test_creating_with_invalid_values_fails_with_the_validation_message_and_writes_nothing
+    # arrange
+    configure_records
+    action = gadget_resource { creatable :name, :kind }.creatable_action
+
+    # act
+    result = run_action(action, params: { name: "", kind: "ferramenta" })
+
+    # assert
+    assert_equal :failed, result.status
+    assert_includes result.message, "Name"
+    assert_equal 0, Gadget.count
+  end
+
+  def test_creating_without_the_permission_is_forbidden
+    # arrange
+    configure_records(permissions: %i[run_action update_record destroy_record])
+    action = gadget_resource { creatable :name }.creatable_action
+
+    # act
+    result = run_action(action, params: { name: "Torno" })
+
+    # assert
+    assert_equal :forbidden, result.status
+    assert_equal 0, Gadget.count
+  end
+
+  def test_creating_with_command_calls_the_command_and_emits_both_events
+    # arrange
+    configure_records
+    command = Class.new(Lucid::Case::Command) do
+      def self.name = "Gadgets::Create"
+      attributes :name, :kind
+
+      def call!
+        success(resource: Gadget.create!(name: name, kind: kind))
+      end
+    end
+    action = gadget_resource { creatable :name, :kind, with: command }.creatable_action
+
+    # act
+    result = run_action(action, params: { name: "Torno", kind: "x" })
+
+    # assert
+    assert_equal :ok, result.status
+    assert_equal "Torno", Gadget.sole.name
+    assert_equal ["backoffice.action.create_gadgets", "gadgets.create"], action_events.map(&:name).sort
+  end
+
+  def test_destroyable_generates_the_high_danger_record_action
+    # arrange
+    configure_records
+
+    # act
+    action = gadget_resource { destroyable }.destroyable_action
+
+    # assert
+    assert_equal ["destroy_gadgets", "gadgets", "Excluir registro", :destroy_record, :high, :list, false],
+                 [action.key, action.target, action.label, action.permission, action.danger, action.landing, action.collection?]
+  end
+
+  def test_destroying_removes_the_record_and_records_the_event
+    # arrange
+    configure_records
+    gadget = Gadget.create!(name: "Torno")
+    action = gadget_resource { destroyable }.destroyable_action
+
+    # act
+    result = run_action(action, record: gadget, confirmation: gadget.id.to_s)
+
+    # assert
+    assert_equal :ok, result.status
+    assert_equal 0, Gadget.count
+    assert_equal REASON, action_events("backoffice.action.destroy_gadgets").sole.reason
+  end
+
+  def test_destroying_requires_the_confirmation
+    # arrange
+    configure_records
+    gadget = Gadget.create!(name: "Torno")
+    action = gadget_resource { destroyable }.destroyable_action
+
+    # act
+    result = run_action(action, record: gadget, confirmation: "0")
+
+    # assert
+    assert_equal :invalid, result.status
+    assert_equal 1, Gadget.count
+  end
+
+  def test_destroying_refused_by_the_model_fails_with_its_message_and_keeps_the_record
+    # arrange
+    configure_records
+    gadget = Gadget.create!(name: "Torno")
+    Part.create!(gadget_id: gadget.id, label: "eixo")
+    action = gadget_resource { destroyable }.destroyable_action
+
+    # act
+    result = run_action(action, record: gadget, confirmation: gadget.id.to_s)
+
+    # assert
+    assert_equal :failed, result.status
+    assert_includes result.message, "Cannot delete record because dependent parts exist"
+    assert_equal 1, Gadget.count
+  end
+
+  def test_destroying_without_the_permission_is_forbidden
+    # arrange
+    configure_records(permissions: %i[run_action update_record create_record])
+    gadget = Gadget.create!(name: "Torno")
+    action = gadget_resource { destroyable }.destroyable_action
+
+    # act
+    result = run_action(action, record: gadget, confirmation: gadget.id.to_s)
+
+    # assert
+    assert_equal :forbidden, result.status
+    assert_equal 1, Gadget.count
+  end
+
+  def test_editing_without_update_record_is_forbidden
+    # arrange
+    configure_records(permissions: %i[run_action])
+    profile = create_profile
+    action = editable_resource(:name).editable_action
+
+    # act
+    result = run_action(action, record: profile, params: { name: "Bia" })
+
+    # assert
+    assert_equal :forbidden, result.status
+    assert_equal "Ana", profile.reload.name
+  end
+
+  def test_creatable_refuses_a_hidden_or_secret_column
+    # arrange
+    configure_records
+    hidden = Class.new(Lucid::Backoffice::Resource) do
+      table :gadgets
+      hide :kind
+    end
+
+    # act
+    hidden_error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { hidden.creatable :name, :kind }
+    secret_error = assert_raises(Lucid::Backoffice::Error::ConfigurationConflict) { gadget_resource { creatable :secret_code } }
+
+    # assert
+    assert_includes hidden_error.message, ":kind"
+    assert_includes secret_error.message, ":secret_code"
   end
 end

@@ -8,6 +8,25 @@ ActiveRecord::Schema.define do
     t.integer :level
     t.timestamps
   end
+  create_table :gadgets, force: true do |t|
+    t.string :name
+    t.string :kind
+    t.string :secret_code
+    t.timestamps
+  end
+  create_table :parts, force: true do |t|
+    t.integer :gadget_id
+    t.string :label
+  end
+end
+
+class Gadget < ActiveRecord::Base
+  has_many :parts, dependent: :restrict_with_error
+  validates :name, presence: true
+end
+
+class Part < ActiveRecord::Base
+  belongs_to :gadget
 end
 
 class Account < ActiveRecord::Base
@@ -32,11 +51,17 @@ class ActionTest < ActivityTest
       role: contact
       nickname: public
       level: public
+    gadgets:
+      name: public
+      kind: public
+      secret_code: contact
   YAML
 
   def setup
     super
     Account.delete_all
+    Part.delete_all
+    Gadget.delete_all
     Lucid::Backoffice::Current.reset
   end
 

@@ -26,6 +26,9 @@ module Lucid
           notice = result.message.presence || I18n.t("lucid_backoffice.action_done")
           return redirect_to(result.redirect, allow_other_host: true, notice: notice) if result.redirect.present?
 
+          landing = landing_path(result.value)
+          return redirect_to(landing, notice: notice) if landing
+
           return redirect_back(fallback_location: lb_routes.root_path, notice: notice)
         end
 
@@ -47,12 +50,32 @@ module Lucid
         params.fetch(:fields, {}).permit(*@action_class.fields.keys).to_h
       end
 
+      def landing_path(value)
+        table = @action_class.target
+        case @action_class.landing
+        when :record
+          id = created_id(value)
+          return nil unless id
+
+          current_tenant ? lb_routes.tenant_record_path(tenant_id: tenancy.identifier(current_tenant), table: table, id: id) : lb_routes.record_path(table: table, id: id)
+        when :list
+          current_tenant ? lb_routes.tenant_table_path(tenant_id: tenancy.identifier(current_tenant), table: table) : lb_routes.table_path(table: table)
+        end
+      end
+
+      def created_id(value)
+        record = value.respond_to?(:id) && !value.is_a?(Hash) ? value : (value[:resource] if value.respond_to?(:[]))
+        record.respond_to?(:id) ? record.id : nil
+      rescue NameError, KeyError, TypeError
+        nil
+      end
+
       def revealed_categories
         @revealed_categories ||= Reveal.categories_for(operator: current_operator, tenant: current_tenant)
       end
 
       def find_record
-        return nil unless @action_class.target && !%w[tenant global].include?(@action_class.target)
+        return nil unless @action_class.target && !@action_class.collection? && !%w[tenant global].include?(@action_class.target)
 
         model = @action_class.target.to_s.classify.safe_constantize
         raise Records::NotFound, "no such record" unless model && model < ActiveRecord::Base

@@ -1178,4 +1178,44 @@ class ActionsIntegrationTest < PanelTest
     # assert
     assert_response :not_found
   end
+
+  def test_collection_action_shows_only_in_the_list_header_and_record_action_only_on_the_record
+    # arrange
+    configure_actions
+    role_action
+    define_action("ImportAccounts") do
+      on :accounts, collection: true
+      label "Importar contas"
+      perform { nil }
+    end
+    account = create_account
+
+    # act
+    get "/backoffice/data/accounts", headers: as(1)
+    on_list = dom.css(".lb-page-actions a").map { |node| node.text.strip }
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+    on_record = dom.css(".lb-page-actions a").map { |node| node.text.strip }
+
+    # assert
+    assert_equal ["Importar contas"], on_list
+    assert_equal ["Corrigir papel"], on_record
+  end
+
+  def test_collection_action_opens_without_a_record_and_runs_without_one
+    # arrange
+    configure_actions
+    define_action("ImportAccounts") do
+      on :accounts, collection: true
+      perform { Account.create!(role: "teacher", nickname: "Nova", level: 1) }
+    end
+    open_preview("import_accounts", {})
+    snapshot = snapshot_value
+
+    # act
+    submit_action("import_accounts", { snapshot: snapshot, reason: REASON })
+
+    # assert
+    assert_response :redirect
+    assert_equal ["Nova"], Account.pluck(:nickname)
+  end
 end

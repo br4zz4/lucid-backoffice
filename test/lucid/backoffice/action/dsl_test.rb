@@ -290,4 +290,49 @@ class ActionDslTest < ActionTest
     # assert
     assert_equal "coordinator", value
   end
+
+  def test_on_is_a_record_target_by_default
+    # arrange
+    action_class = build_action { on :accounts }
+
+    # act
+    collection = action_class.collection?
+
+    # assert
+    refute collection
+  end
+
+  def test_on_collection_marks_the_action_as_collection
+    # arrange
+    action_class = build_action { on :accounts, collection: true }
+
+    # act
+    values = [action_class.collection?, action_class.target]
+
+    # assert
+    assert_equal [true, "accounts"], values
+  end
+
+  def test_landing_defaults_to_nil_and_stores_a_symbol
+    # arrange
+    plain = build_action { on :accounts }
+    landing = build_action { on :accounts; landing "list" }
+
+    # act
+    values = [plain.landing, landing.landing]
+
+    # assert
+    assert_equal [nil, :list], values
+  end
+
+  def test_failure_exposes_type_and_errors
+    # arrange
+    failure = Action::Failure.new(type: :invalid, errors: ["Name can't be blank"])
+
+    # act
+    values = [failure.type, failure.errors, failure[:errors], failure.failure?]
+
+    # assert
+    assert_equal [:invalid, ["Name can't be blank"], ["Name can't be blank"], true], values
+  end
 end
