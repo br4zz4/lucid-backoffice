@@ -138,11 +138,36 @@ module Lucid
       end
 
       # @return [Hash{Symbol => Object}] what the form starts with: the declared default, or the current
-      #   value of the record attribute named like the field. A required field must still be submitted.
-      def initial_values
+      #   value of the record attribute named like the field. A field over a masked column starts as
+      #   {Field::LOCKED}, never with the value. A required field must still be submitted.
+      def initial_values(revealed: [])
+        locked = locked_names(revealed: revealed)
         self.class.fields.to_h do |name, field|
+          next [name, Field::LOCKED] if locked.include?(name)
+
           current = record.public_send(name) if record.respond_to?(name)
           [name, current.nil? ? field.default_for(self) : current]
+        end
+      end
+
+      # @return [Array<Symbol>] the fields over a column of the record's table that is neither public nor
+      #   revealed. Without a record (collection, tenant or global action) nothing is locked.
+      def locked_names(revealed: [])
+        table = self.class.target
+        return [] if record.nil? || table.nil? || %w[tenant global].include?(table)
+
+        self.class.fields.keys.select do |name|
+          next false unless record.respond_to?(name)
+
+          category = Classification.category_for(table, name)
+          category != Classification::PUBLIC && !Array(revealed).include?(category)
+        end
+      end
+
+      # Params with the locked fields replaced by the record's current value, read on the server.
+      def with_locked_current(params, revealed: [])
+        locked_names(revealed: revealed).each_with_object(params.to_h.with_indifferent_access) do |name, result|
+          result[name] = record.public_send(name)
         end
       end
 

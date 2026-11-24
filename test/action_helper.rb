@@ -30,7 +30,7 @@ class ActionTest < ActivityTest
   CLASSIFICATION = <<~YAML.freeze
     accounts:
       role: contact
-      nickname: free_text
+      nickname: public
       level: public
   YAML
 
@@ -72,9 +72,10 @@ class ActionTest < ActivityTest
     action_class.new(record: record, tenant: tenant, params: params).prepare!.build_preview.snapshot
   end
 
-  def run_action(action_class, record: nil, tenant: nil, params: {}, reason: REASON, snapshot: :auto, operator: Operator.new(1), **options)
+  def run_action(action_class, record: nil, tenant: nil, params: {}, reason: REASON, snapshot: :auto, operator: Operator.new(1), revealed: %w[contact], **options)
     snapshot = snapshot_for(action_class, record: record, tenant: tenant, params: params) if snapshot == :auto
-    Runner.call(action_class, operator: operator, reason: reason, snapshot: snapshot, record: record, tenant: tenant, params: params, **options)
+    Runner.call(action_class, operator: operator, reason: reason, snapshot: snapshot, record: record, tenant: tenant, params: params,
+                              revealed: revealed, **options)
   end
 
   def action_events(name = nil)

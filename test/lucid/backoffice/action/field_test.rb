@@ -285,10 +285,11 @@ class ActionFieldTest < ActionTest
 
   def test_initial_values_take_the_current_value_of_the_attribute_named_like_the_field
     # arrange
+    configure_actions
     action = role_action.new(record: create_account(role: "teacher"), params: {})
 
     # act
-    values = action.initial_values
+    values = action.initial_values(revealed: %w[contact])
 
     # assert
     assert_equal({ role: "teacher" }, values)
@@ -296,6 +297,7 @@ class ActionFieldTest < ActionTest
 
   def test_initial_values_use_the_declared_default_when_the_attribute_is_nil
     # arrange
+    configure_actions
     action_class = build_action do
       on :accounts
       field :nickname, :string, default: "Anonymous"
@@ -371,6 +373,7 @@ class ActionFieldTest < ActionTest
 
   def test_initial_values_cover_every_field
     # arrange
+    configure_actions
     action_class = build_action do
       on :accounts
       field :role, :string
@@ -380,10 +383,103 @@ class ActionFieldTest < ActionTest
     action = action_class.new(record: create_account(role: "teacher", level: 3))
 
     # act
-    values = action.initial_values
+    values = action.initial_values(revealed: %w[contact])
 
     # assert
     assert_equal({ role: "teacher", level: 3, extra: nil }, values)
+  end
+
+  def test_initial_values_lock_a_field_over_a_masked_column
+    # arrange
+    configure_actions
+    action = role_action.new(record: create_account(role: "teacher"), params: {})
+
+    # act
+    values = action.initial_values
+
+    # assert
+    assert_same Action::Field::LOCKED, values[:role]
+    refute_includes values.values.map(&:to_s), "teacher"
+  end
+
+  def test_initial_values_unlock_a_field_when_its_category_is_revealed
+    # arrange
+    configure_actions
+    action = role_action.new(record: create_account(role: "teacher"), params: {})
+
+    # act
+    values = action.initial_values(revealed: %w[contact])
+
+    # assert
+    assert_equal({ role: "teacher" }, values)
+  end
+
+  def test_initial_values_stay_locked_when_another_category_is_revealed
+    # arrange
+    configure_actions
+    action = role_action.new(record: create_account(role: "teacher"), params: {})
+
+    # act
+    values = action.initial_values(revealed: %w[free_text])
+
+    # assert
+    assert_same Action::Field::LOCKED, values[:role]
+  end
+
+  def test_initial_values_lock_nothing_without_a_record
+    # arrange
+    configure_actions
+    action = role_action.new(params: {})
+
+    # act
+    values = action.initial_values
+
+    # assert
+    refute_same Action::Field::LOCKED, values[:role]
+  end
+
+  def test_runner_discards_the_submitted_value_of_a_locked_field
+    # arrange
+    configure_actions
+    account = create_account(role: "teacher")
+    action_class = role_action
+
+    # act
+    snapshot = snapshot_for(action_class, record: account, params: { role: "teacher" })
+    result = run_action(action_class, record: account, params: { role: "coordinator" }, snapshot: snapshot, revealed: [])
+
+    # assert
+    assert_equal [:ok, "teacher"], [result.status, account.reload.role]
+  end
+
+  def test_runner_hands_the_current_value_of_a_locked_field_to_the_action
+    # arrange
+    configure_actions
+    account = create_account(role: "teacher")
+    seen = []
+    action_class = role_action do
+      perform { seen << role }
+    end
+
+    # act
+    snapshot = snapshot_for(action_class, record: account, params: { role: "teacher" })
+    result = run_action(action_class, record: account, params: { role: "coordinator" }, snapshot: snapshot, revealed: [])
+
+    # assert
+    assert_equal [:ok, ["teacher"]], [result.status, seen]
+  end
+
+  def test_runner_accepts_the_submitted_value_when_the_category_is_revealed
+    # arrange
+    configure_actions
+    account = create_account(role: "teacher")
+    action_class = role_action
+
+    # act
+    result = run_action(action_class, record: account, params: { role: "coordinator" }, revealed: %w[contact])
+
+    # assert
+    assert_equal [:ok, "coordinator"], [result.status, account.reload.role]
   end
 
   def test_initial_values_do_not_make_a_required_field_optional

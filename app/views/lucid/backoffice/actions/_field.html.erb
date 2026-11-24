@@ -1,7 +1,10 @@
 <% value = action.values.fetch(field.name) { initial[field.name] } %>
 <div class="lb-field">
   <label for="fields_<%= field.name %>"><%= field.name.to_s.humanize %></label>
-  <% if field.partial %>
+  <% if value.equal?(Lucid::Backoffice::Action::Field::LOCKED) || local_assigns.fetch(:locked, []).include?(field.name) %>
+    <%= text_field_tag nil, t("lucid_backoffice.locked_value"), id: "fields_#{field.name}", disabled: true, class: "lb-locked" %>
+    <small class="lb-locked-note"><%= t("lucid_backoffice.locked_field") %></small>
+  <% elsif field.partial %>
     <%= render field.partial, field: field, value: value, action: action %>
   <% else %>
     <% case field.type %>
