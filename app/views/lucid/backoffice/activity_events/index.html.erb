@@ -1,6 +1,6 @@
 <h1><%= t("lucid_backoffice.activity") %></h1>
-<%= form_with url: activity_path, method: :get, class: "lb-filters" do %>
-  <%= text_field_tag :tenant, params[:tenant], placeholder: t("lucid_backoffice.tenant") %>
+<%= form_with url: (current_tenant ? tenant_activity_path(tenant_id: tenancy.identifier(current_tenant)) : activity_path), method: :get, class: "lb-filters" do %>
+  <% unless current_tenant %><%= text_field_tag :tenant, params[:tenant], placeholder: t("lucid_backoffice.tenant") %><% end %>
   <%= text_field_tag :actor_type, params[:actor_type], placeholder: t("lucid_backoffice.actor") %>
   <%= text_field_tag :name, params[:name], placeholder: t("lucid_backoffice.name") %>
   <%= text_field_tag :outcome, params[:outcome], placeholder: t("lucid_backoffice.outcome") %>

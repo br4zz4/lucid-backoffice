@@ -8,20 +8,7 @@
     <%= render "lucid/backoffice/shared/head" %>
   </head>
   <body class="lb-body">
-    <nav class="lb-nav">
-      <a class="lb-brand" href="<%= lb_routes.root_path %>"><%= Lucid::Backoffice.configuration.title %></a>
-      <% if allowed?(:browse) %><a href="<%= lb_routes.data_path %>"><%= t("lucid_backoffice.data") %></a><% end %>
-      <% if allowed?(:view_activity) %><a href="<%= lb_routes.activity_path %>"><%= t("lucid_backoffice.activity") %></a><% end %>
-      <% lucid_backoffice_menu.each do |item| %><a href="<%= item.path %>"><%= item.label %></a><% end %>
-      <% if Lucid::Backoffice.configuration.sign_out_path %>
-        <% sign_out_path = instance_exec(&Lucid::Backoffice.configuration.sign_out_path) %>
-        <% if Lucid::Backoffice.configuration.sign_out_method.to_sym == :get %>
-          <a class="lb-signout" href="<%= sign_out_path %>"><%= t("lucid_backoffice.sign_out") %></a>
-        <% else %>
-          <%= button_to t("lucid_backoffice.sign_out"), sign_out_path, method: Lucid::Backoffice.configuration.sign_out_method, class: "lb-signout", form: { class: "lb-signout-form" } %>
-        <% end %>
-      <% end %>
-    </nav>
+    <%= render "lucid/backoffice/shared/topbar" %>
     <main class="lb-main">
       <% if notice %><p class="lb-flash lb-flash-ok"><%= notice %></p><% end %>
       <% if alert %><p class="lb-flash lb-flash-error"><%= alert %></p><% end %>

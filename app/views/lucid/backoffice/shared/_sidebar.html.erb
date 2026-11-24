@@ -1,0 +1,37 @@
+<% tenant_id = current_tenant && tenancy.identifier(current_tenant) %>
+<aside class="lb-sidebar">
+  <a class="lb-brand" href="<%= lb_root_path %>"><%= Lucid::Backoffice.configuration.title %></a>
+  <%= render "lucid/backoffice/shared/context" %>
+  <nav class="lb-nav-main">
+    <% if current_tenant %>
+      <% overview = lb_routes.tenant_path(tenant_id: tenant_id) %>
+      <% if allowed?(:view_tenant, { tenant: current_tenant }) %>
+        <a href="<%= overview %>"<%= raw ' aria-current="page"' if lb_current?(overview) %>><%= t("lucid_backoffice.tenant_overview") %></a>
+      <% end %>
+      <% if allowed?(:view_activity) %>
+        <% activity = lb_routes.tenant_activity_path(tenant_id: tenant_id) %>
+        <a href="<%= activity %>"<%= raw ' aria-current="page"' if lb_current?(activity) %>><%= t("lucid_backoffice.activity") %></a>
+      <% end %>
+    <% else %>
+      <% if allowed?(:view_dashboard) %>
+        <a href="<%= lb_root_path %>"<%= raw ' aria-current="page"' if lb_current?(lb_root_path) %>><%= t("lucid_backoffice.overview") %></a>
+      <% end %>
+      <% if allowed?(:view_activity) %>
+        <a href="<%= lb_routes.activity_path %>"<%= raw ' aria-current="page"' if lb_current?(lb_routes.activity_path) %>><%= t("lucid_backoffice.activity") %></a>
+      <% end %>
+      <% lucid_backoffice_menu.each do |item| %>
+        <a href="<%= item.path %>"<%= raw ' aria-current="page"' if lb_current?(item.path) %>><%= item.label %></a>
+      <% end %>
+    <% end %>
+  </nav>
+  <% tables = context_tables %>
+  <% if allowed?(:browse, { tenant: current_tenant }) %>
+    <nav class="lb-nav-data">
+      <h3><%= t("lucid_backoffice.data") %></h3>
+      <% tables.each do |table| %>
+        <% path = table_link(table) %>
+        <a class="lb-nav-table" href="<%= path %>"<%= raw ' aria-current="page"' if lb_current?(path, prefix: true) %>><%= table %></a>
+      <% end %>
+    </nav>
+  <% end %>
+</aside>

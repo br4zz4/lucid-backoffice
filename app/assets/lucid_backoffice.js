@@ -28,3 +28,8 @@ document.addEventListener("DOMContentLoaded", function () {
     sync();
   });
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+  var toggle = document.querySelector(".lb-sidebar-toggle");
+  if (toggle && window.matchMedia("(min-width: 40.01rem)").matches) { toggle.setAttribute("open", ""); }
+});

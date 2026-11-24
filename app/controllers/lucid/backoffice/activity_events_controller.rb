@@ -6,7 +6,11 @@ module Lucid
       def index
         authorize!(:view_activity)
         scope = Activity::Event.order(occurred_at: :desc, id: :desc)
-        scope = scope.where(tenant_identifier: params[:tenant]) if params[:tenant].present?
+        if current_tenant
+          scope = scope.where(tenant_identifier: tenancy.identifier(current_tenant))
+        elsif params[:tenant].present?
+          scope = scope.where(tenant_identifier: params[:tenant])
+        end
         scope = scope.where(actor_type: params[:actor_type]) if params[:actor_type].present?
         scope = scope.where("name LIKE ?", "#{Activity::Event.sanitize_sql_like(params[:name])}%") if params[:name].present?
         scope = scope.where(outcome: params[:outcome]) if params[:outcome].present?
