@@ -1,6 +1,6 @@
 ---
 title: Nova estrutura visual do painel — sidebar com contexto e revelação por um olho único
-status: proposed
+status: in_progress
 created: 2026-11-24
 updated: 2026-11-24
 owner: "@oporpino"
@@ -303,29 +303,31 @@ Merge in this order: #<pr1> #<pr2> #<pr3> #<pr4> #<pr5> #<pr6> #<pr7> #<pr8>
 
 # definition of done
 
-- [ ] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato)
-- [ ] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.test` no luneta)
-- [ ] Toda task do "how" executada
-- [ ] Documentação atualizada (`docs/masking-and-reveals.md`, `docs/customization.md`, `docs/tenancy.md`, `docs/security.md`, `README.md`, `CHANGELOG.md`, `docs/guides/sysadmin.md` do luneta)
-- [ ] Staging: `staging: none` (default global, sem seção no `AGENTS.md` da gem nem do luneta) — passo pulado e reportado
-- [ ] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes)
-- [ ] Último PR liga a funcionalidade e remove código temporário (PR 4 remove a revelação por categoria; PR 8 remove os menus duplicados do luneta)
-- [ ] Cenário "sidebar mostra o contexto compartilhado por padrão": teste de integração em `test/integration/panel_test.rb`
-- [ ] Cenários "entrar no contexto de um tenant" e "sair do tenant volta ao compartilhado": teste de integração com `configure_tenants`
-- [ ] Cenário "painel sem tenancy": teste com `config.tenancy = :none` que procura "tenant" (sem diferenciar maiúsculas) no texto visível (`dom.text`) das páginas `/backoffice`, `/backoffice/data` e `/backoffice/data/<tabela>` e não acha, e sem "Trocar"/"Sair do tenant"
-- [ ] Cenário "revelar tudo com um motivo": teste de modelo de `Reveal.grant_all` e de integração do `POST /backoffice/reveals` sem `category` (N Reveals e N eventos com o mesmo motivo)
-- [ ] Cenários alternativos de motivo curto, categoria negada e nenhuma categoria permitida: testes de `grant_all` (sem linha parcial; 403)
-- [ ] Cenário "encerrar tudo pelo olho": teste de `DELETE /backoffice/reveals` (revoga todos, um evento por categoria)
-- [ ] Cenário "revelação vale só para o contexto": teste com Reveals em "alfa" checando o olho e a máscara em "beta"
-- [ ] Cenário "sem permissão de revelar": teste de que o olho não é renderizado
-- [ ] Cenário "lista por categoria não existe mais": teste sem `form.lb-reason-form`/`.lb-reveal` e lista de rotas não-GET exatamente `POST /reveals`, `DELETE /reveals`, `POST /actions/:action_key`
-- [ ] Cenário "cabeçalho padrão de página": teste do breadcrumb e das Ações no cabeçalho do registro
-- [ ] Cenário "Ações legíveis e indisponíveis de verdade": teste de DOM (`a.lb-button` com texto; indisponível `[aria-disabled=true]` sem `href`, com o motivo em `small`) e regra CSS `.lb a.lb-button` presente em `app/assets/lucid_backoffice.css`
-- [ ] Cenário "mais de 3 Ações viram menu": teste de DOM com 4 Ações
-- [ ] Cenário "estado vazio": teste de integração com a tabela vazia
+Evidência: gem `main` f1fd43d, CI verde (Linux 3.4/3.2, macOS), 840 testes, 0 falhas, seeds 50874/1/2/3/777; tag `v0.3.0`; PRs #21 a #27, #31 e #32 mergeados; luneta PR #144 mergeado (1509 testes, CI verde). Pendente: verificação visual no navegador (mobile) e ping em staging (o luneta não declara `## Staging`).
+
+- [x] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato)
+- [x] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.test` no luneta)
+- [x] Toda task do "how" executada
+- [x] Documentação atualizada (`docs/masking-and-reveals.md`, `docs/customization.md`, `docs/tenancy.md`, `docs/security.md`, `README.md`, `CHANGELOG.md`, `docs/guides/sysadmin.md` do luneta)
+- [x] Staging: `staging: none` (default global, sem seção no `AGENTS.md` da gem nem do luneta) — passo pulado e reportado
+- [x] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes)
+- [x] Último PR liga a funcionalidade e remove código temporário (PR 4 remove a revelação por categoria; PR 8 remove os menus duplicados do luneta)
+- [x] Cenário "sidebar mostra o contexto compartilhado por padrão": teste de integração em `test/integration/panel_test.rb`
+- [x] Cenários "entrar no contexto de um tenant" e "sair do tenant volta ao compartilhado": teste de integração com `configure_tenants`
+- [x] Cenário "painel sem tenancy": teste com `config.tenancy = :none` que procura "tenant" (sem diferenciar maiúsculas) no texto visível (`dom.text`) das páginas `/backoffice`, `/backoffice/data` e `/backoffice/data/<tabela>` e não acha, e sem "Trocar"/"Sair do tenant"
+- [x] Cenário "revelar tudo com um motivo": teste de modelo de `Reveal.grant_all` e de integração do `POST /backoffice/reveals` sem `category` (N Reveals e N eventos com o mesmo motivo)
+- [x] Cenários alternativos de motivo curto, categoria negada e nenhuma categoria permitida: testes de `grant_all` (sem linha parcial; 403)
+- [x] Cenário "encerrar tudo pelo olho": teste de `DELETE /backoffice/reveals` (revoga todos, um evento por categoria)
+- [x] Cenário "revelação vale só para o contexto": teste com Reveals em "alfa" checando o olho e a máscara em "beta"
+- [x] Cenário "sem permissão de revelar": teste de que o olho não é renderizado
+- [x] Cenário "lista por categoria não existe mais": teste sem `form.lb-reason-form`/`.lb-reveal` e lista de rotas não-GET exatamente `POST /reveals`, `DELETE /reveals`, `POST /actions/:action_key`
+- [x] Cenário "cabeçalho padrão de página": teste do breadcrumb e das Ações no cabeçalho do registro
+- [x] Cenário "Ações legíveis e indisponíveis de verdade": teste de DOM (`a.lb-button` com texto; indisponível `[aria-disabled=true]` sem `href`, com o motivo em `small`) e regra CSS `.lb a.lb-button` presente em `app/assets/lucid_backoffice.css`
+- [x] Cenário "mais de 3 Ações viram menu": teste de DOM com 4 Ações
+- [x] Cenário "estado vazio": teste de integração com a tabela vazia
 - [ ] Cenário "mobile": regra `@media (max-width: 40rem)` para `.lb-sidebar-toggle` presente no CSS, e verificação manual no navegador com a janela estreita (macOS e Linux)
-- [ ] Cenário "luneta usa a nova versão": `make core.test` verde no luneta com a gem em `v0.3.0`, e o initializer sem `r.menu`
-- [ ] Tag `v0.3.0` publicada no remoto da gem
+- [x] Cenário "luneta usa a nova versão": `make core.test` verde no luneta com a gem em `v0.3.0`, e o initializer sem `r.menu`
+- [x] Tag `v0.3.0` publicada no remoto da gem
 - [ ] Banner `FINISHED` impresso como última saída (`br4zz4:finish`, Step 7), só com todos os itens acima marcados
 
 ## documentation
