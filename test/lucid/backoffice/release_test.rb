@@ -3,13 +3,13 @@ require "test_helper"
 class BackofficeReleaseTest < Minitest::Test
   ROOT = File.expand_path("../../..", __dir__)
 
-  def test_version_is_0_2_3
+  def test_version_is_0_2_4
     # arrange
     # act
     version = Lucid::Backoffice::VERSION
 
     # assert
-    assert_equal "0.2.3", version
+    assert_equal "0.2.4", version
   end
 
   def test_every_doc_linked_in_the_readme_exists

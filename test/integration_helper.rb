@@ -17,6 +17,7 @@ class FakeTenancy
   def health(_tenant) = nil
   def shared_schema = "public"
   def schema_for(tenant) = tenant ? tenant.code : "public"
+  def with(_tenant) = yield
 end
 
 class PanelTest < ActionDispatch::IntegrationTest

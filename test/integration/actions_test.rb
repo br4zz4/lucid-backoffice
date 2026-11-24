@@ -12,6 +12,19 @@ class ActionTenancy < FakeTenancy
   end
 end
 
+class Lesson < ActiveRecord::Base; end
+
+class SchemaTenancy < FakeTenancy
+  def with(tenant)
+    connection = ActiveRecord::Base.lease_connection
+    previous = connection.schema_search_path
+    connection.schema_search_path = schema_for(tenant)
+    yield
+  ensure
+    connection.schema_search_path = previous
+  end
+end
+
 class ActionsIntegrationTest < PanelTest
   ACTIONS = "/backoffice/actions".freeze
   REASON = "investigar chamado 123".freeze
@@ -777,6 +790,78 @@ class ActionsIntegrationTest < PanelTest
     disabled = dom.at_css("span[aria-disabled=true]")
     assert_equal ["Limpar cache", "Em manutenção"], [disabled.text.strip, disabled["title"]]
     assert_nil dom.at_css("a[href*='/actions/purge_cache/new']")
+  end
+
+  def create_lesson_tables
+    create_tenant_schemas
+    connection.execute("CREATE TABLE alfa.lessons (id bigserial PRIMARY KEY)")
+    connection.execute("CREATE TABLE alfa.rooms (id bigserial PRIMARY KEY)")
+  end
+
+  def test_record_action_guard_reading_a_tenant_table_is_evaluated_inside_the_tenant_schema
+    # arrange
+    create_lesson_tables
+    connection.execute("INSERT INTO alfa.rooms DEFAULT VALUES")
+    configure_actions(tenancy: SchemaTenancy.new)
+    define_action("CloseStudent") do
+      on :lessons
+      label "Encerrar aluno"
+      unavailable "Existem salas abertas", if: -> { ActiveRecord::Base.connection.select_value("SELECT count(*) FROM rooms").to_i.positive? }
+      perform { nil }
+    end
+    lesson_id = connection.select_value("INSERT INTO alfa.lessons DEFAULT VALUES RETURNING id")
+
+    # act
+    get "/backoffice/tenants/alfa/data/lessons/#{lesson_id}", headers: as(1)
+
+    # assert
+    assert_response :ok
+    disabled = dom.at_css("span[aria-disabled=true]")
+    assert_equal ["Encerrar aluno", "Existem salas abertas"], [disabled.text.strip, disabled["title"]]
+    refute_equal "alfa", connection.select_value("SELECT current_schema()")
+  end
+
+  def test_record_action_guard_sees_the_tenant_schema_as_the_active_one
+    # arrange
+    create_lesson_tables
+    seen = []
+    configure_actions(tenancy: SchemaTenancy.new)
+    define_action("CloseStudent") do
+      on :lessons
+      label "Encerrar aluno"
+      unavailable "Bloqueado", if: -> { seen << ActiveRecord::Base.connection.select_value("SELECT current_schema()"); true }
+      perform { nil }
+    end
+    lesson_id = connection.select_value("INSERT INTO alfa.lessons DEFAULT VALUES RETURNING id")
+
+    # act
+    get "/backoffice/tenants/alfa/data/lessons/#{lesson_id}", headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_includes seen, "alfa"
+    assert_equal ["alfa"], seen.uniq
+  end
+
+  def test_global_action_with_null_tenant_is_still_evaluated_and_rendered
+    # arrange
+    seen = []
+    configure_actions(tenancy: SchemaTenancy.new)
+    define_action("PurgeCache") do
+      on :global
+      label "Limpar cache"
+      unavailable "Em manutenção", if: -> { seen << ActiveRecord::Base.connection.select_value("SELECT current_schema()"); true }
+      perform { nil }
+    end
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    assert_response :ok
+    disabled = dom.at_css("span[aria-disabled=true]")
+    assert_equal ["Limpar cache", "Em manutenção"], [disabled.text.strip, disabled["title"]]
+    assert_equal ["public"], seen.uniq
   end
 
   def test_tenant_action_runs_inside_tenancy_with_the_tenant
