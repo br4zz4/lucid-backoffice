@@ -168,6 +168,10 @@
 .lb-menu-item small { display: block; }
 .lb-crumb-sep { opacity: .4; }
 
+.lb-empty { padding: 3rem 1rem; border: 1px dashed var(--lb-border); border-radius: var(--lb-radius); color: var(--lb-muted); text-align: center; }
+.lb-pager-range { margin: .8rem 0 0; color: var(--lb-muted); font-size: .82rem; }
+.lb-list .lb-enter { margin-left: .6rem; padding: .2rem .8rem; font-size: .78rem; }
+
 @media (max-width: 40rem) {
   .lb-topbar { margin-left: 0; padding: .6rem 1rem; gap: .6rem; }
   .lb-main { margin-left: 0; padding: 1.25rem 1rem 3rem; }

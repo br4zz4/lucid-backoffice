@@ -1,4 +1,4 @@
-<h1><%= Lucid::Backoffice.configuration.title %></h1>
+<%= render "lucid/backoffice/ui/page_header", title: Lucid::Backoffice.configuration.title, target: "global", record: nil, tenant: nil %>
 <% if @cards.any? %>
   <p class="lb-period">
     <a href="<%= root_path(period: "week") %>" class="<%= "lb-active" if @period.key == "week" %>"><%= t("lucid_backoffice.week") %></a>
@@ -12,8 +12,7 @@
   <h2><%= Lucid::Backoffice.configuration.terms.fetch(:tenants, t("lucid_backoffice.tenants")) %></h2>
   <ul class="lb-list">
     <% @tenants.each do |tenant| %>
-      <li><a href="<%= tenant_path(tenant_id: tenancy.identifier(tenant)) %>"><%= tenancy.label(tenant) %></a> <small><%= tenancy.identifier(tenant) %></small></li>
+      <li><a href="<%= tenant_path(tenant_id: tenancy.identifier(tenant)) %>"><%= tenancy.label(tenant) %></a> <small><%= tenancy.identifier(tenant) %></small> <a class="lb-button lb-enter" href="<%= tenant_path(tenant_id: tenancy.identifier(tenant)) %>"><%= t("lucid_backoffice.enter") %></a></li>
     <% end %>
   </ul>
 <% end %>
-<%= render "lucid/backoffice/ui/actions", target: "global", record: nil, tenant: nil %>
