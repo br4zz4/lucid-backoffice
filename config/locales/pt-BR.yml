@@ -16,6 +16,12 @@ pt-BR:
     end_reveal_all: Encerrar
     cancel: Cancelar
     more_actions: Ações
+    records_count:
+      one: "1 registro"
+      other: "%{count} registros"
+    no_records: "Nenhum registro em %{table}"
+    enter: "Entrar →"
+    pager_range: "%{from}–%{to} de %{total}"
     shared: Compartilhado
     context: Contexto
     menu: Menu

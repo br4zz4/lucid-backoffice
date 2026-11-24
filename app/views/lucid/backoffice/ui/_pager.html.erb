@@ -1,3 +1,8 @@
+<% total = local_assigns[:total] %>
+<% if total.to_i.positive? %>
+  <% per = Lucid::Backoffice.configuration.page_size %>
+  <p class="lb-pager-range"><%= t("lucid_backoffice.pager_range", from: ((page - 1) * per) + 1, to: [page * per, total].min, total: number_with_delimiter(total)) %></p>
+<% end %>
 <% if pages > 1 %>
   <nav class="lb-pager">
     <% (1..pages).each do |n| %>

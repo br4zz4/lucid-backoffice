@@ -968,6 +968,7 @@ class ActionsIntegrationTest < PanelTest
     # assert
     assert_response :ok
     assert_equal "Limpar cache", dom.at_css(".lb-actions .lb-action a.lb-button").text.strip
+    assert_equal "Limpar cache", dom.at_css(".lb-page-head .lb-page-actions a.lb-button").text.strip
     assert_empty dom.css("h2").select { |heading| heading.text.strip == I18n.t("lucid_backoffice.actions") }
   end
 

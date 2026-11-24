@@ -139,6 +139,44 @@ class ActivityIntegrationTest < PanelTest
     assert_equal "event.n59", last.last
   end
 
+  def crumbs = dom.css("header.lb-topbar .lb-crumbs a, header.lb-topbar .lb-crumbs b").map { |node| [node.name, node.text.strip, node["href"]] }
+
+  def test_activity_page_header_and_breadcrumb
+    # arrange
+    path = "/backoffice/activity"
+
+    # act
+    get path, headers: as(1)
+
+    # assert
+    assert_equal I18n.t("lucid_backoffice.activity"), dom.at_css(".lb-page-head h1").text.strip
+    assert_equal [["a", I18n.t("lucid_backoffice.shared"), "/backoffice"], ["b", I18n.t("lucid_backoffice.activity"), nil]], crumbs
+  end
+
+  def test_tenant_activity_breadcrumb_includes_the_tenant
+    # arrange
+    configure_tenant_activity
+
+    # act
+    get "/backoffice/tenants/alfa/activity", headers: as(1)
+
+    # assert
+    expected = [["a", I18n.t("lucid_backoffice.shared"), "/backoffice"], ["a", "Escola alfa", "/backoffice/tenants/alfa"],
+                ["b", I18n.t("lucid_backoffice.activity"), nil]]
+    assert_equal expected, crumbs
+  end
+
+  def test_activity_pager_shows_the_range_and_total
+    # arrange
+    60.times { |index| create_event(name: "event.n#{index}", occurred_at: (index + 1).minutes.ago) }
+
+    # act
+    get "/backoffice/activity", params: { page: 3 }, headers: as(1)
+
+    # assert
+    assert_equal I18n.t("lucid_backoffice.pager_range", from: 51, to: 60, total: 60), dom.at_css(".lb-pager-range").text.strip
+  end
+
   def test_activity_filters_by_name_prefix
     # arrange
     create_event(name: "backoffice.browse")

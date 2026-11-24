@@ -8,6 +8,12 @@ en:
     end_reveal_all: End
     cancel: Cancel
     more_actions: Actions
+    records_count:
+      one: "1 record"
+      other: "%{count} records"
+    no_records: "No records in %{table}"
+    enter: "Enter →"
+    pager_range: "%{from}–%{to} of %{total}"
     shared: Shared
     context: Context
     menu: Menu
