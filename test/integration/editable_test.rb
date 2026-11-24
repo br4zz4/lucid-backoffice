@@ -177,8 +177,8 @@ class EditableIntegrationTest < PanelTest
     on_record = header_actions
 
     # assert
-    assert_equal ["Novo registro"], on_list
-    assert_equal ["Excluir registro"], on_record
+    assert_equal [I18n.t("lucid_backoffice.new_record")], on_list
+    assert_equal [I18n.t("lucid_backoffice.destroy_record")], on_record
   end
 
   def test_new_record_button_is_absent_without_create_record

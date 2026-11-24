@@ -45,6 +45,10 @@ pt-BR:
     pending_version: "Migration pendente %{version}"
     ignored_filters: "Filtros ignorados: %{filters}"
     search: Buscar
+    action_replayed: Esta ação já foi executada ou o formulário expirou. Revise e execute de novo.
+    edit: Editar
+    new_record: Novo registro
+    destroy_record: Excluir registro
     secret_title: Exibido uma única vez
     secret_warning: Copie e envie para a pessoa; não será exibido novamente.
     copy: Copiar

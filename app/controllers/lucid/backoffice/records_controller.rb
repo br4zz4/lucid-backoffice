@@ -36,18 +36,24 @@ module Lucid
         PanelActivity.view(table: params[:table], id: params[:id].to_i, tenant: current_tenant)
         @cells = Records.find(schema: @schema, table: params[:table], id: params[:id], revealed: revealed, resource: resource)
         @related = Records.related(schema: @schema, table: params[:table], id: params[:id])
+                          .select { |item| allowed?(:browse, { tenant: current_tenant, table: item.table }) }
       end
 
       private
 
       MAX_STORED_QUERIES = 20
+      MAX_STORED_BYTES = 1500
+      MAX_TEXT_LENGTH = 100
+      MAX_FILTERS = 4
 
       def store_query(token, criteria)
         store = (session[:lb_queries] ||= {})
-        filters = criteria.fetch("filters", {}).reject { |_name, value| value.to_s.strip.empty? }
+        filters = criteria.fetch("filters", {}).reject { |_name, value| value.to_s.strip.empty? }.first(MAX_FILTERS)
+                          .to_h { |name, value| [name.to_s[0, MAX_TEXT_LENGTH], value.to_s[0, MAX_TEXT_LENGTH]] }
         store[token] = { "table" => params[:table], "tenant" => Current.tenant_identifier.to_s, "filters" => filters,
-                         "search" => criteria["search"].to_s, "sort" => criteria["sort"].to_s, "dir" => criteria["dir"].to_s }
-        store.delete(store.keys.first) while store.size > MAX_STORED_QUERIES
+                         "search" => criteria["search"].to_s[0, MAX_TEXT_LENGTH], "sort" => criteria["sort"].to_s[0, MAX_TEXT_LENGTH],
+                         "dir" => criteria["dir"].to_s[0, 4] }
+        store.delete(store.keys.first) while store.size > 1 && (store.size > MAX_STORED_QUERIES || store.to_json.bytesize > MAX_STORED_BYTES)
       end
 
       def stored_query
@@ -77,7 +83,8 @@ module Lucid
 
       def criteria_names(query, columns)
         searched = query.search ? query.searchable_columns(columns, revealed, declared: resource&.searchable.presence).map(&:name) : []
-        query.filters.keys + [query.sort].compact + searched
+        applied = query.filters.keys.select { |name| query.applicable_filter?(name, columns, revealed) }
+        applied + (query.sortable?(columns, revealed) ? [query.sort] : []) + searched
       end
 
       helper_method :sort_header

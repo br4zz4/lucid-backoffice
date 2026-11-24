@@ -37,6 +37,10 @@ en:
     pending_version: "Pending migration %{version}"
     ignored_filters: "Ignored filters: %{filters}"
     search: Search
+    action_replayed: This action was already run or the form expired. Review and run it again.
+    edit: Edit
+    new_record: New record
+    destroy_record: Delete record
     secret_title: Shown only once
     secret_warning: Copy it and send it to the person. It will not be shown again.
     copy: Copy

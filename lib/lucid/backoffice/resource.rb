@@ -93,10 +93,11 @@ module Lucid
         def editable(*names, with: nil, &block)
           resource_table = table
           fields = names.map(&:to_sym)
+          reject_hidden!(:editable, fields)
           types = editable_types(resource_table, fields)
           klass = action_class("edit_#{resource_table}", "Edit")
           klass.on(resource_table)
-          klass.label("Edit")
+          klass.label(-> { I18n.t("lucid_backoffice.edit") })
           klass.permission(:update_record)
           fields.each { |field| klass.field(field, types.fetch(field, :string), required: false) }
           if with
@@ -122,11 +123,11 @@ module Lucid
           types = editable_types(resource_table, fields)
           klass = action_class("create_#{resource_table}", "Create")
           klass.on(resource_table, collection: true)
-          klass.label("Novo registro")
+          klass.label(-> { I18n.t("lucid_backoffice.new_record") })
           klass.permission(:create_record)
           klass.landing(:record)
           fields.each { |field| klass.field(field, types.fetch(field, :string), required: false) }
-          klass.preview { |p| p.list("Novo registro", self.class.fields.keys.map { |field| "#{field}: #{public_send(field)}" }) }
+          klass.preview { |p| p.list(I18n.t("lucid_backoffice.new_record"), self.class.fields.keys.map { |field| "#{field}: #{public_send(field)}" }) }
           if with
             klass.perform(with: with)
           else
@@ -151,7 +152,7 @@ module Lucid
           record_model!(:destroyable)
           klass = action_class("destroy_#{resource_table}", "Destroy")
           klass.on(resource_table)
-          klass.label("Excluir registro")
+          klass.label(-> { I18n.t("lucid_backoffice.destroy_record") })
           klass.danger(:high)
           klass.permission(:destroy_record)
           klass.landing(:list)
@@ -187,7 +188,8 @@ module Lucid
 
         def reject_hidden!(kind, fields)
           fields.each do |field|
-            next unless hidden.include?(field.to_s) || field.to_s.match?(Lucid::Backoffice.configuration.secret_columns)
+            next unless hidden.include?(field.to_s) || field.to_s.match?(Lucid::Backoffice.configuration.secret_columns) ||
+                        Classification.category_for(table, field) == "secret"
 
             raise Error::ConfigurationConflict, "#{name || self}: #{kind} #{field.inspect} is a hidden column"
           end

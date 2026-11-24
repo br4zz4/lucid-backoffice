@@ -11,6 +11,10 @@ module Lucid
         Rails.autoloaders.main.eager_load_dir(dir.to_s) if dir.exist? && Rails.autoloaders.main.respond_to?(:eager_load_dir)
       end
 
+      initializer "lucid_backoffice.filter_parameters" do |app|
+        app.config.filter_parameters |= %i[criteria filter_value filter fields]
+      end
+
       rake_tasks do
         load File.expand_path("../../tasks/lucid_backoffice.rake", __dir__)
       end

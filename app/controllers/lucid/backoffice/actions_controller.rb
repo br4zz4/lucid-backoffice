@@ -17,6 +17,7 @@ module Lucid
 
       def create
         authorize!(@action_class.permission, context)
+        return redirect_to(replay_path, alert: I18n.t("lucid_backoffice.action_replayed")) unless nonce_valid?
         result = tenancy.with(current_tenant) do
           Action::Runner.call(@action_class, operator: current_operator, reason: params[:reason], snapshot: params[:snapshot].to_s,
                               record: find_record, tenant: current_tenant, params: field_params, confirmation: params[:confirmation],
@@ -50,6 +51,27 @@ module Lucid
 
       def field_params
         params.fetch(:fields, {}).permit(*@action_class.fields.keys).to_h
+      end
+
+      MAX_NONCES = 20
+
+      def issue_nonce
+        store = (session[:lb_action_nonces] ||= {})
+        nonce = SecureRandom.urlsafe_base64(16)
+        store[nonce] = @action_class.key
+        store.delete(store.keys.first) while store.size > MAX_NONCES
+        nonce
+      end
+
+      def nonce_valid?
+        return true unless @action_class.secret
+
+        store = session[:lb_action_nonces] || {}
+        store.delete(params[:nonce].to_s) == @action_class.key
+      end
+
+      def replay_path
+        lb_routes.new_action_path(action_key: @action_class.key, record_id: params[:record_id], tenant_id: params[:tenant_id])
       end
 
       def render_secret(result)
@@ -104,6 +126,7 @@ module Lucid
         @action = @action_class.new(record: @record, tenant: current_tenant, params: values).prepare!
         preview = @action.build_preview
         @snapshot = preview.snapshot
+        @nonce = issue_nonce if @action_class.secret
         @changes = preview.masked(revealed: revealed_categories)
         @listings = preview.listings
       rescue ArgumentError => e

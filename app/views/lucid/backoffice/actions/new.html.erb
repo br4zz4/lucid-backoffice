@@ -12,6 +12,7 @@
     <% if @snapshot %>
       <%= render "lucid/backoffice/actions/preview", changes: @changes, listings: @listings %>
       <%= hidden_field_tag :snapshot, @snapshot %>
+      <% if @nonce %><%= hidden_field_tag :nonce, @nonce %><% end %>
       <label><%= t("lucid_backoffice.reason") %></label>
       <%= text_field_tag :reason, nil, minlength: Lucid::Backoffice.configuration.reveal_reason_min, required: true, data: { lb_reason: true } %>
       <% if expected %>

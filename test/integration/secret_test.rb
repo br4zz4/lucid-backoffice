@@ -22,6 +22,8 @@ class SecretIntegrationTest < PanelTest
   def configure_actions
     path = write_yaml(ActionTest::CLASSIFICATION)
     configure_panel(permissions: OPERATOR) { |config| config.classification_path = path }
+    Lucid::Backoffice::Reveal.create!(operator_type: "PanelOperator", operator_id: 1, tenant_identifier: Lucid::Backoffice::Reveal.tenant_identifier(nil),
+                                      category: "contact", reason: REASON, expires_at: 1.hour.from_now)
   end
 
   def define_action(name, &body)
@@ -49,8 +51,9 @@ class SecretIntegrationTest < PanelTest
   def submit(account, key: "issue_link")
     get "#{ACTIONS}/#{key}/new", params: { record_id: account.id, fields: { role: "coordinator" } }, headers: as(1)
     snapshot = dom.at_css("input[name=snapshot]")["value"]
-    post "#{ACTIONS}/#{key}", params: { record_id: account.id, fields: { role: "coordinator" }, snapshot: snapshot, reason: REASON },
-                              headers: as(1)
+    nonce = dom.at_css("input[name=nonce]")&.[]("value")
+    @last_params = { record_id: account.id, fields: { role: "coordinator" }, snapshot: snapshot, reason: REASON, nonce: nonce }.compact
+    post "#{ACTIONS}/#{key}", params: @last_params, headers: as(1)
   end
 
   def capture_log
@@ -75,6 +78,7 @@ class SecretIntegrationTest < PanelTest
 
     # assert
     assert_response :success
+    assert_equal "coordinator", account.reload.role
   end
 
   def test_response_is_not_cacheable
@@ -234,5 +238,152 @@ class SecretIntegrationTest < PanelTest
     assert_response :unprocessable_entity
     refute_includes response.body, SECRET
     assert_equal "teacher", account.reload.role
+  end
+
+  def test_new_with_a_preview_issues_a_nonce_for_secret_actions
+    # arrange
+    configure_actions
+    secret_action
+    account = create_account
+
+    # act
+    get "#{ACTIONS}/issue_link/new", params: { record_id: account.id, fields: { role: "coordinator" } }, headers: as(1)
+
+    # assert
+    assert_predicate dom.at_css("input[type=hidden][name=nonce]")["value"].to_s, :present?
+  end
+
+  def test_new_without_a_preview_issues_no_nonce
+    # arrange
+    configure_actions
+    secret_action
+    account = create_account
+
+    # act
+    get "#{ACTIONS}/issue_link/new", params: { record_id: account.id }, headers: as(1)
+
+    # assert
+    assert_nil dom.at_css("input[name=nonce]")
+  end
+
+  def test_replaying_the_same_post_does_not_run_again_nor_show_the_secret
+    # arrange
+    configure_actions
+    secret_action
+    account = create_account
+    submit(account)
+    account.reload.update!(role: "teacher")
+
+    # act
+    post "#{ACTIONS}/issue_link", params: @last_params, headers: as(1)
+
+    # assert
+    assert_response :redirect
+    assert_includes response.location, "/backoffice/actions/issue_link/new"
+    assert_equal I18n.t("lucid_backoffice.action_replayed"), flash[:alert]
+    assert_equal "teacher", account.reload.role
+    refute_includes response.body, SECRET
+    assert_equal 1, events("backoffice.action.issue_link").size
+  end
+
+  def test_post_without_a_nonce_does_not_run
+    # arrange
+    configure_actions
+    secret_action
+    account = create_account
+    submit(account)
+    account.reload.update!(role: "teacher")
+
+    # act
+    post "#{ACTIONS}/issue_link", params: @last_params.except(:nonce), headers: as(1)
+
+    # assert
+    assert_response :redirect
+    assert_equal I18n.t("lucid_backoffice.action_replayed"), flash[:alert]
+    assert_equal "teacher", account.reload.role
+  end
+
+  def test_post_with_a_forged_nonce_does_not_run
+    # arrange
+    configure_actions
+    secret_action
+    account = create_account
+    submit(account)
+    account.reload.update!(role: "teacher")
+
+    # act
+    post "#{ACTIONS}/issue_link", params: @last_params.merge(nonce: "forjado"), headers: as(1)
+
+    # assert
+    assert_response :redirect
+    assert_equal I18n.t("lucid_backoffice.action_replayed"), flash[:alert]
+    assert_equal "teacher", account.reload.role
+  end
+
+  def test_nonce_of_another_action_is_not_accepted
+    # arrange
+    configure_actions
+    secret_action
+    other = define_action("OtherLink") do
+      on :accounts
+      field :role, :select, choices: -> { %w[teacher coordinator director] }
+      perform do
+        record.update!(role: role)
+        record.id
+      end
+      secret { |_value| "outro" }
+    end
+    account = create_account
+    get "#{ACTIONS}/issue_link/new", params: { record_id: account.id, fields: { role: "coordinator" } }, headers: as(1)
+    nonce = dom.at_css("input[name=nonce]")["value"]
+    snapshot = dom.at_css("input[name=snapshot]")["value"]
+
+    # act
+    post "#{ACTIONS}/#{other.key}", params: { record_id: account.id, fields: { role: "coordinator" }, snapshot: snapshot, reason: REASON, nonce: nonce },
+                                    headers: as(1)
+
+    # assert
+    assert_response :redirect
+    assert_equal "teacher", account.reload.role
+  end
+
+  def test_action_without_a_secret_does_not_require_a_nonce
+    # arrange
+    configure_actions
+    plain = define_action("PlainLink") do
+      on :accounts
+      field :role, :select, choices: -> { %w[teacher coordinator director] }
+      perform do
+        record.update!(role: role)
+        record.id
+      end
+    end
+    account = create_account
+    get "#{ACTIONS}/#{plain.key}/new", params: { record_id: account.id, fields: { role: "coordinator" } }, headers: as(1)
+    snapshot = dom.at_css("input[name=snapshot]")["value"]
+
+    # act
+    post "#{ACTIONS}/#{plain.key}", params: { record_id: account.id, fields: { role: "coordinator" }, snapshot: snapshot, reason: REASON },
+                                    headers: as(1)
+
+    # assert
+    assert_equal "coordinator", account.reload.role
+    assert_equal I18n.t("lucid_backoffice.action_done"), flash[:notice]
+  end
+
+  def test_action_field_values_are_filtered_in_the_parameters_log
+    # arrange
+    configure_actions
+    secret_action
+    account = create_account
+
+    # act
+    log = capture_log { submit(account) }
+    parameter_lines = log.lines.grep(/Parameters:/)
+
+    # assert
+    assert_operator parameter_lines.size, :>=, 2
+    assert_includes parameter_lines.join, "[FILTERED]"
+    refute_includes parameter_lines.join, "coordinator"
   end
 end
