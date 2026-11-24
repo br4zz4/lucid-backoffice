@@ -69,6 +69,33 @@ class PanelIntegrationTest < PanelTest
     assert_equal ["period=week", "period=month"], dom.css("p.lb-period a").map { |a| URI(a["href"]).query }
   end
 
+  def test_dashboard_header_uses_the_configured_title_and_only_the_context_in_the_topbar
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] }) { |config| config.title = "Luneta Ops" }
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    assert_equal "Luneta Ops", dom.at_css(".lb-page-head h1").text.strip
+    assert_empty dom.css("header.lb-topbar .lb-crumbs a")
+    assert_empty dom.css("header.lb-topbar .lb-crumbs .lb-crumb-sep")
+  end
+
+  def test_dashboard_tenant_list_offers_an_enter_button_per_tenant
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard view_tenant] }, tenancy: FakeTenancy.new)
+
+    # act
+    get "/backoffice", headers: as(1)
+    buttons = dom.css("ul.lb-list a.lb-button.lb-enter")
+
+    # assert
+    assert_equal ["/backoffice/tenants/alfa", "/backoffice/tenants/beta"], buttons.map { |a| a["href"] }
+    assert_equal [I18n.t("lucid_backoffice.enter")] * 2, buttons.map { |a| a.text.strip }
+    assert_includes dom.css("ul.lb-list li").first.text, "Escola alfa"
+  end
+
   def test_dashboard_card_is_hidden_without_its_permission
     # arrange
     configure_panel(permissions: { 1 => %i[view_dashboard] })
@@ -101,7 +128,7 @@ class PanelIntegrationTest < PanelTest
 
     # act
     get "/backoffice", headers: as(1)
-    with = dom.css("ul.lb-list li").map { |li| li.text.squish }
+    with = dom.css("ul.lb-list li").map { |li| li.dup.tap { |copy| copy.css(".lb-enter").each(&:remove) }.text.squish }
     get "/backoffice", headers: as(2)
 
     # assert

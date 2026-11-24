@@ -418,4 +418,143 @@ class DataIntegrationTest < PanelTest
     assert_includes disabled, "dashed"
     assert_includes css, ".lb-menu"
   end
+
+  def label(key, **options) = I18n.t("lucid_backoffice.#{key}", **options, raise: true)
+
+  def test_list_page_header_has_table_title_count_and_breadcrumb
+    # arrange
+    3.times { insert_student }
+
+    # act
+    get "/backoffice/data/students", headers: as(1)
+
+    # assert
+    assert_equal "students", dom.at_css(".lb-page-head h1").text.strip
+    assert_equal label(:records_count, count: 3), dom.at_css(".lb-page-head .lb-page-sub").text.strip
+    assert_equal [["a", shared_label, "/backoffice"], ["a", label(:data), "/backoffice/data"], ["b", "students", nil]], crumbs
+  end
+
+  def test_list_count_uses_the_singular_for_one_record
+    # arrange
+    insert_student
+
+    # act
+    get "/backoffice/data/students", headers: as(1)
+
+    # assert
+    assert_equal label(:records_count, count: 1), dom.at_css(".lb-page-sub").text.strip
+  end
+
+  def test_tenant_list_breadcrumb_includes_the_tenant
+    # arrange
+    configure_tenant_data
+
+    # act
+    get "/backoffice/tenants/alfa/data/students", headers: as(1)
+
+    # assert
+    expected = [["a", shared_label, "/backoffice"], ["a", "Escola alfa", "/backoffice/tenants/alfa"],
+                ["a", label(:data), "/backoffice/tenants/alfa/data"], ["b", "students", nil]]
+    assert_equal expected, crumbs
+    assert_equal label(:records_count, count: 1), dom.at_css(".lb-page-sub").text.strip
+  end
+
+  def test_empty_table_shows_the_empty_state_instead_of_a_header_only_table
+    # arrange
+    path = "/backoffice/data/students"
+
+    # act
+    get path, headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_empty dom.css("table.lb-table")
+    assert_equal label(:no_records, table: "students"), dom.at_css(".lb-empty").text.strip
+    assert_equal label(:records_count, count: 0), dom.at_css(".lb-page-sub").text.strip
+  end
+
+  def test_empty_tenant_table_shows_the_empty_state
+    # arrange
+    configure_tenant_data
+    connection.execute("DELETE FROM alfa.students")
+
+    # act
+    get "/backoffice/tenants/alfa/data/students", headers: as(1)
+
+    # assert
+    assert_empty dom.css("table.lb-table")
+    assert_equal label(:no_records, table: "students"), dom.at_css(".lb-empty").text.strip
+  end
+
+  def test_table_with_rows_keeps_the_table_and_no_empty_state
+    # arrange
+    insert_student
+
+    # act
+    get "/backoffice/data/students", headers: as(1)
+
+    # assert
+    assert_equal 1, dom.css("table.lb-table").size
+    assert_empty dom.css(".lb-empty")
+  end
+
+  def test_tables_page_header_and_breadcrumb
+    # arrange
+    path = "/backoffice/data"
+
+    # act
+    get path, headers: as(1)
+
+    # assert
+    assert_equal label(:data), dom.at_css(".lb-page-head h1").text.strip
+    assert_equal [["a", shared_label, "/backoffice"], ["b", label(:data), nil]], crumbs
+    assert_includes dom.css("ul.lb-list a").map(&:text), "students"
+  end
+
+  def test_tenant_tables_page_breadcrumb
+    # arrange
+    configure_tenant_data
+
+    # act
+    get "/backoffice/tenants/alfa/data", headers: as(1)
+
+    # assert
+    assert_equal [["a", shared_label, "/backoffice"], ["a", "Escola alfa", "/backoffice/tenants/alfa"], ["b", label(:data), nil]], crumbs
+    assert_equal label(:data), dom.at_css(".lb-page-head h1").text.strip
+  end
+
+  def test_pager_shows_the_visible_range_and_total
+    # arrange
+    configure_panel(permissions: { 1 => %i[browse] }) { |config| config.page_size = 10 }
+    25.times { insert_student }
+
+    # act
+    get "/backoffice/data/students", headers: as(1)
+    first = dom.at_css(".lb-pager-range").text.strip
+    get "/backoffice/data/students", params: { page: 2 }, headers: as(1)
+    second = dom.at_css(".lb-pager-range").text.strip
+    get "/backoffice/data/students", params: { page: 3 }, headers: as(1)
+    third = dom.at_css(".lb-pager-range").text.strip
+
+    # assert
+    assert_equal label(:pager_range, from: 1, to: 10, total: 25), first
+    assert_equal label(:pager_range, from: 11, to: 20, total: 25), second
+    assert_equal label(:pager_range, from: 21, to: 25, total: 25), third
+    assert_equal 2, dom.css("nav.lb-pager a").size
+  end
+
+  def test_new_list_locale_keys_exist_in_both_languages
+    # arrange
+    keys = %w[records_count no_records enter pager_range]
+
+    # act
+    missing = %i[en pt-BR].flat_map { |locale| keys.reject { |key| I18n.exists?("lucid_backoffice.#{key}", locale) }.map { |key| "#{locale}.#{key}" } }
+
+    # assert
+    assert_empty missing
+    assert_equal "1 registro", I18n.t("lucid_backoffice.records_count", count: 1, locale: :"pt-BR")
+    assert_equal "5 registros", I18n.t("lucid_backoffice.records_count", count: 5, locale: :"pt-BR")
+    assert_equal "1 record", I18n.t("lucid_backoffice.records_count", count: 1, locale: :en)
+    assert_equal "5 records", I18n.t("lucid_backoffice.records_count", count: 5, locale: :en)
+  end
 end
