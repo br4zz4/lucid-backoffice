@@ -453,4 +453,38 @@ class ActionDslTest < ActionTest
     # assert
     assert_equal [nil, nil], submitted
   end
+
+  def test_secret_for_is_nil_without_a_block
+    # arrange
+    action = build_action { on :accounts }.new
+
+    # act
+    secret = action.secret_for(:value)
+
+    # assert
+    assert_nil secret
+  end
+
+  def test_secret_for_returns_the_block_string_with_the_value
+    # arrange
+    action = build_action { on :accounts; secret { |value| "tok-#{value}" } }.new
+
+    # act
+    secret = action.secret_for(7)
+
+    # assert
+    assert_equal "tok-7", secret
+  end
+
+  def test_secret_for_is_nil_when_the_block_returns_nil_or_blank
+    # arrange
+    nil_action = build_action { on :accounts; secret { |_value| nil } }.new
+    blank_action = build_action { on :accounts; secret { |_value| "  " } }.new
+
+    # act
+    secrets = [nil_action.secret_for(1), blank_action.secret_for(1)]
+
+    # assert
+    assert_equal [nil, nil], secrets
+  end
 end

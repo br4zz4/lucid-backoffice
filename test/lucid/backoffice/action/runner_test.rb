@@ -985,4 +985,71 @@ class ActionRunnerTest < ActionTest
     # assert
     assert_equal [:invalid, "teacher", 0], [result.status, account.reload.role, action_events.size]
   end
+
+  def test_secret_is_carried_by_the_result_on_success
+    # arrange
+    configure_actions
+    action_class = role_action { secret { |value| "link-#{value}" } }
+    account = create_account
+
+    # act
+    result = run_action(action_class, record: account, params: { role: "coordinator" })
+
+    # assert
+    assert_equal [:ok, "link-#{result.value}"], [result.status, result.secret]
+  end
+
+  def test_secret_is_nil_when_the_action_declares_none
+    # arrange
+    configure_actions
+    account = create_account
+
+    # act
+    result = run_action(role_action, record: account, params: { role: "coordinator" })
+
+    # assert
+    assert_nil result.secret
+  end
+
+  def test_secret_is_nil_when_the_block_returns_blank
+    # arrange
+    configure_actions
+    action_class = role_action { secret { |_value| "" } }
+    account = create_account
+
+    # act
+    result = run_action(action_class, record: account, params: { role: "coordinator" })
+
+    # assert
+    assert_nil result.secret
+  end
+
+  def test_secret_is_nil_on_failure
+    # arrange
+    configure_actions
+    action_class = role_action do
+      secret { |_value| "nunca-exibir" }
+      perform { Failure.new(:last_owner) }
+    end
+    account = create_account
+
+    # act
+    result = run_action(action_class, record: account, params: { role: "coordinator" })
+
+    # assert
+    assert_equal [:failed, nil], [result.status, result.secret]
+  end
+
+  def test_secret_is_absent_from_the_recorded_event
+    # arrange
+    configure_actions
+    action_class = role_action { secret { |_value| "SEGREDO-NO-EVENTO" } }
+    account = create_account
+
+    # act
+    run_action(action_class, record: account, params: { role: "coordinator" })
+
+    # assert
+    refute_includes action_events.sole.attributes.to_json, "SEGREDO-NO-EVENTO"
+  end
 end

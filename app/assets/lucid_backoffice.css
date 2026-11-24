@@ -96,6 +96,7 @@
 .lb-query-form { display: flex; gap: .5rem; }
 .lb-chip { display: inline-flex; gap: .25rem; align-items: center; padding: .15rem .5rem; border: 1px solid var(--lb-border, #333); border-radius: 999px; }
 .lb-chip-remove, .lb-sort { background: none; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0; }
+.lb-secret-value { width: 100%; font-family: var(--lb-font-mono); }
 .lb-masked { color: var(--lb-muted); letter-spacing: .12em; font-family: var(--lb-font-mono); }
 .lb-grouped td:first-child { border-left: 2px solid var(--lb-accent); }
 
