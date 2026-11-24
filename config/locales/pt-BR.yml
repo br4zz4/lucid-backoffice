@@ -38,8 +38,6 @@ pt-BR:
     pending_version: "Migration pendente %{version}"
     ignored_filters: "Filtros ignorados: %{filters}"
     reveal_title: Revelar dados
-    reveal: Revelar
-    end_reveal: "Encerrar revelação de %{category}"
     reason: Motivo
     revealed: Dados revelados
     revoked: Revelação encerrada

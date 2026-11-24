@@ -18,5 +18,4 @@
   </section>
 <% end %>
 <% @sections.each do |section| %><%= render section.partial, tenant: @tenant %><% end %>
-<%= render "lucid/backoffice/ui/reveal_toggle", tenant: @tenant, reveals: @reveals %>
 <%= render "lucid/backoffice/ui/actions", target: "tenant", record: nil, tenant: @tenant %>

@@ -26,8 +26,6 @@ module Lucid
       def load_scope
         Current.tenant_identifier = current_tenant && tenancy.identifier(current_tenant)
         @schema = tenancy.schema_for(current_tenant)
-        @reveals = Reveal.active.where(operator_type: current_operator.class.name, operator_id: current_operator.id,
-                                       tenant_identifier: Reveal.tenant_identifier(current_tenant))
       end
 
       def resource
