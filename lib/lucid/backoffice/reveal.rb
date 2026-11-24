@@ -25,6 +25,27 @@ module Lucid
           end
         end
 
+        # Reveals, with one reason, every category the operator may reveal in this tenant. Categories the
+        # host app denies are skipped; all of them are created, or none.
+        # @return [Array<Reveal>]
+        # @raise [Error::Forbidden] no category may be revealed
+        # @raise [ActiveRecord::RecordInvalid] the reason is too short
+        def grant_all(operator:, reason:, tenant: nil)
+          categories = (Lucid::Backoffice.configuration.categories - [Classification::PUBLIC]).select do |category|
+            Authorization.allowed?(operator, :reveal, { tenant: tenant, category: category })
+          end
+          raise Error::Forbidden, "not allowed to reveal" if categories.empty?
+
+          transaction { categories.map { |category| grant(operator: operator, tenant: tenant, category: category, reason: reason) } }
+        end
+
+        # Ends every active reveal of the operator in this tenant.
+        # @return [Array<Reveal>]
+        def revoke_all(operator:, tenant: nil)
+          scope = active.where(operator_type: operator.class.name, operator_id: operator.id, tenant_identifier: tenant_identifier(tenant))
+          transaction { scope.order(:id).map { |reveal| revoke(reveal, operator: operator) } }
+        end
+
         # Ends a reveal now, so the next request masks again.
         def revoke(reveal, operator:)
           Authorization.authorize!(operator, :reveal, { tenant: reveal.tenant_identifier, category: reveal.category })
