@@ -3,16 +3,16 @@ require "test_helper"
 class BackofficeReleaseTest < Minitest::Test
   ROOT = File.expand_path("../../..", __dir__)
 
-  def test_version_is_0_3_0
+  def test_version_is_0_3_1
     # arrange
     # act
     version = Lucid::Backoffice::VERSION
 
     # assert
-    assert_equal "0.3.0", version
+    assert_equal "0.3.1", version
   end
 
-  def test_changelog_documents_the_current_version_with_a_breaking_section
+  def test_changelog_documents_the_current_version
     # arrange
     changelog = File.read(File.join(ROOT, "CHANGELOG.md"))
 
@@ -21,7 +21,30 @@ class BackofficeReleaseTest < Minitest::Test
 
     # assert
     assert section, "CHANGELOG.md has no section for #{Lucid::Backoffice::VERSION}"
+  end
+
+  def test_changelog_keeps_the_breaking_section_in_0_3_0
+    # arrange
+    changelog = File.read(File.join(ROOT, "CHANGELOG.md"))
+
+    # act
+    section = changelog[/^## 0\.3\.0\n(.*?)(?=^## |\z)/m, 1]
+
+    # assert
+    assert section, "CHANGELOG.md has no section for 0.3.0"
     assert_match(/^### Breaking$/, section)
+  end
+
+  def test_js_no_longer_carries_the_modal_reveal_handler
+    # arrange
+    source = File.read(File.join(ROOT, "app/assets/lucid_backoffice.js"))
+
+    # act
+    leftovers = %w[showModal data-lb-reveal-open].select { |token| source.include?(token) }
+
+    # assert
+    assert_empty leftovers
+    assert_includes source, "data-lb-reason-form"
   end
 
   def test_every_doc_linked_in_the_readme_exists

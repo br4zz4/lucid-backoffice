@@ -35,7 +35,7 @@ class RevealEyeIntegrationTest < PanelTest
   def minutes = Lucid::Backoffice.configuration.reveal_duration / 60
   def clock(time) = I18n.l(time.in_time_zone, format: "%H:%M")
   def eye = dom.at_css("header.lb-topbar .lb-topbar-right .lb-eye")
-  def eye_dialog = dom.at_css("dialog.lb-reveal-dialog")
+  def eye_dialog = dom.at_css("div.lb-reveal-dialog")
   def reveal_form = eye_dialog.at_css("form[data-lb-reason-form]")
   def end_form = dom.at_css("header.lb-topbar form.button_to[action='/backoffice/reveals']")
 
@@ -60,10 +60,11 @@ class RevealEyeIntegrationTest < PanelTest
     get "/backoffice/tenants/alfa", headers: as(1)
 
     # assert
-    assert_equal "button", eye.name
-    assert eye.key?("data-lb-reveal-open")
+    assert_equal "summary", eye.name
+    assert_equal "details", eye.parent.name
+    assert_includes eye.parent["class"].split, "lb-eye-pop"
     assert_predicate eye["title"], :present?
-    assert_includes eye.text, label(:masked_data)
+    assert_equal label(:masked_data), eye.at_css(".lb-eye-label").text.strip
     refute_includes eye["class"].split, "lb-eye-on"
     assert_nil end_form
   end
@@ -103,11 +104,12 @@ class RevealEyeIntegrationTest < PanelTest
     assert_equal "post", form["method"].downcase
     textarea = form.at_css("textarea[name=reason][data-lb-reason]")
     assert_equal "12", textarea["minlength"]
+    assert textarea.key?("required")
     assert_equal "alfa", form.at_css("input[type=hidden][name=tenant_id]")["value"]
     assert_empty form.css("[name=category]")
   end
 
-  def test_dialog_submit_is_disabled_and_states_the_duration
+  def test_dialog_submit_is_enabled_without_js_and_states_the_duration
     # arrange
     configure_multi { |config| config.reveal_duration = 30 * 60 }
 
@@ -116,11 +118,11 @@ class RevealEyeIntegrationTest < PanelTest
 
     # assert
     submit = reveal_form.at_css("[data-lb-submit]")
-    assert submit.key?("disabled")
+    refute submit.key?("disabled")
     assert_equal label(:reveal_all, minutes: 30), (submit["value"] || submit.text).strip
   end
 
-  def test_dialog_has_cancel_and_explainer
+  def test_dialog_has_explainer_and_no_cancel_or_native_dialog
     # arrange
     configure_multi
 
@@ -128,7 +130,8 @@ class RevealEyeIntegrationTest < PanelTest
     get "/backoffice/tenants/alfa", headers: as(1)
 
     # assert
-    assert eye_dialog.at_css("button[data-lb-reveal-close]")
+    assert_empty dom.css("dialog")
+    assert_empty eye_dialog.css("button[data-lb-reveal-close]")
     assert_includes eye_dialog.css("p").map { |p| p.text.squish }, label(:reveal_explainer, minutes: minutes)
   end
 
@@ -161,13 +164,13 @@ class RevealEyeIntegrationTest < PanelTest
 
     # act
     get "/backoffice/tenants/alfa", headers: as(3)
-    shared = [dom.css(".lb-eye").size, dom.css("dialog.lb-reveal-dialog").size]
+    shared = [dom.css(".lb-eye").size, dom.css("div.lb-reveal-dialog").size]
     get "/backoffice", headers: as(3)
 
     # assert
     assert_equal [0, 0], shared
     assert_empty dom.css(".lb-eye")
-    assert_empty dom.css("dialog.lb-reveal-dialog")
+    assert_empty dom.css("div.lb-reveal-dialog")
   end
 
   def test_eye_is_absent_without_the_reveal_permission_and_without_tenancy
@@ -179,7 +182,7 @@ class RevealEyeIntegrationTest < PanelTest
 
     # assert
     assert_empty dom.css(".lb-eye")
-    assert_empty dom.css("dialog.lb-reveal-dialog")
+    assert_empty dom.css("div.lb-reveal-dialog")
   end
 
   def test_active_reveal_turns_the_eye_on_with_the_earliest_expiry
@@ -228,6 +231,19 @@ class RevealEyeIntegrationTest < PanelTest
     assert eye_dialog
   end
 
+  def test_shared_context_is_named_home
+    # arrange
+    configure_multi
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    assert_equal "Home", I18n.t("lucid_backoffice.shared", locale: :en)
+    assert_equal "Home", I18n.t("lucid_backoffice.shared", locale: :"pt-BR")
+    assert_includes dom.text, label(:shared)
+  end
+
   def test_reveal_eye_is_scoped_to_the_context
     # arrange
     configure_multi
@@ -273,7 +289,7 @@ class RevealEyeIntegrationTest < PanelTest
 
     # assert
     assert_empty dom.css(".lb-eye")
-    assert_empty dom.css("dialog.lb-reveal-dialog")
+    assert_empty dom.css("div.lb-reveal-dialog")
   end
 
   def test_eye_is_absent_when_every_category_is_denied_without_tenancy
@@ -286,7 +302,7 @@ class RevealEyeIntegrationTest < PanelTest
 
     # assert
     assert_empty dom.css(".lb-eye")
-    assert_empty dom.css("dialog.lb-reveal-dialog")
+    assert_empty dom.css("div.lb-reveal-dialog")
   end
 
   def test_dialog_lists_only_the_categories_the_operator_may_reveal
@@ -369,7 +385,7 @@ class RevealEyeIntegrationTest < PanelTest
     assert_equal paths.to_h { |path| [path, 1] }, present
   end
 
-  def test_js_handles_opening_and_closing_the_dialog
+  def test_js_keeps_the_reason_form_handler
     # arrange
     path = "/backoffice/assets/lucid_backoffice.js"
 
@@ -378,10 +394,57 @@ class RevealEyeIntegrationTest < PanelTest
 
     # assert
     assert_response :ok
-    assert_includes response.body, "data-lb-reveal-open"
-    assert_includes response.body, "data-lb-reveal-close"
-    assert_includes response.body, "showModal"
     assert_includes response.body, "data-lb-reason-form"
+  end
+
+  def served_css
+    get "/backoffice/assets/lucid_backoffice.css"
+    response.body
+  end
+
+  def css_block(source, header)
+    start = source.index(header)
+    return unless start
+
+    depth = 0
+    source[start..].each_char.with_index do |char, index|
+      depth += 1 if char == "{"
+      depth -= 1 if char == "}"
+      return source[start..(start + index)] if depth.zero? && char == "}"
+    end
+  end
+
+  def test_css_styles_the_eye_popover
+    # arrange / act
+    css = served_css
+
+    # assert
+    assert_includes css, ".lb-eye-pop"
+  end
+
+  def test_css_hides_the_eye_label_on_narrow_screens
+    # arrange / act
+    block = css_block(served_css, "@media (max-width: 40rem)")
+
+    # assert
+    assert block, "missing @media (max-width: 40rem)"
+    assert_match(/\.lb-eye-label[^{]*\{[^}]*display:\s*none/m, block)
+  end
+
+  def test_css_keeps_breadcrumbs_on_one_line
+    # arrange / act
+    css = served_css
+
+    # assert
+    assert_match(/\.lb-crumbs[^{]*\{[^}]*white-space:\s*nowrap/m, css)
+  end
+
+  def test_css_rounds_the_sidebar_links
+    # arrange / act
+    css = served_css
+
+    # assert
+    assert_match(/\.lb \.lb-sidebar \.lb-nav-main a[^{]*\{[^}]*border-radius/m, css)
   end
 
   def test_new_locale_keys_exist_in_both_languages

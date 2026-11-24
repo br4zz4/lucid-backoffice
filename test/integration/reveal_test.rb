@@ -196,7 +196,7 @@ class RevealIntegrationTest < PanelTest
 
     # act
     get path, headers: as(1)
-    forms = dom.css("dialog.lb-reveal-dialog form[data-lb-reason-form]")
+    forms = dom.css("div.lb-reveal-dialog form[data-lb-reason-form]")
 
     # assert
     assert_response :ok
@@ -204,7 +204,7 @@ class RevealIntegrationTest < PanelTest
     assert_equal "/backoffice/reveals", forms.first["action"]
     assert_equal "10", forms.first.at_css("textarea[name=reason]")["minlength"]
     assert_equal "alfa", forms.first.at_css("input[name=tenant_id]")["value"]
-    assert forms.first.at_css("[data-lb-submit][disabled]")
+    refute forms.first.at_css("[data-lb-submit]").key?("disabled")
     assert_empty forms.first.css("[name=category]")
   end
 
@@ -232,7 +232,7 @@ class RevealIntegrationTest < PanelTest
 
     # assert
     assert_response :ok
-    assert_empty dom.css("dialog.lb-reveal-dialog")
+    assert_empty dom.css("div.lb-reveal-dialog")
     assert_empty dom.css("form[data-lb-reason-form]")
   end
 
@@ -261,7 +261,7 @@ class RevealIntegrationTest < PanelTest
     get "/backoffice/data/students", headers: as(1)
 
     # assert
-    assert_equal "/backoffice/reveals", dom.at_css("dialog.lb-reveal-dialog form[data-lb-reason-form]")&.[]("action")
+    assert_equal "/backoffice/reveals", dom.at_css("div.lb-reveal-dialog form[data-lb-reason-form]")&.[]("action")
   end
 
   def reveal_all(operator: 1, tenant: "alfa", reason: REASON, referer: PATH)
