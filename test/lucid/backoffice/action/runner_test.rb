@@ -876,4 +876,113 @@ class ActionRunnerTest < ActionTest
     # assert
     assert_nil reason
   end
+
+  def submit_action_class(performed: [], &extra)
+    build_action("SendReport") do
+      on :global
+      submit :screen, label: "Mostrar na tela"
+      submit :email, label: "Enviar por e-mail", if: -> { email_available? }
+      perform { performed << submitted }
+      class_eval(&extra) if extra
+    end
+  end
+
+  def test_declared_submit_option_runs_and_is_visible_to_perform
+    # arrange
+    configure_actions
+    performed = []
+    action_class = submit_action_class(performed: performed)
+
+    # act
+    result = run_action(action_class, submit: "screen")
+
+    # assert
+    assert_equal [:ok, [:screen]], [result.status, performed]
+  end
+
+  def test_submit_option_whose_condition_fails_is_invalid_and_nothing_runs
+    # arrange
+    configure_actions
+    Lucid::Backoffice.configuration.email_available = -> { false }
+    performed = []
+    action_class = submit_action_class(performed: performed)
+
+    # act
+    result = run_action(action_class, submit: "email")
+
+    # assert
+    assert_equal [:invalid, [], 0], [result.status, performed, action_events.size]
+  end
+
+  def test_submit_option_whose_condition_holds_runs
+    # arrange
+    configure_actions
+    Lucid::Backoffice.configuration.email_available = -> { true }
+    performed = []
+    action_class = submit_action_class(performed: performed)
+
+    # act
+    result = run_action(action_class, submit: "email")
+
+    # assert
+    assert_equal [:ok, [:email]], [result.status, performed]
+  end
+
+  def test_unknown_submit_option_is_invalid
+    # arrange
+    configure_actions
+    performed = []
+    action_class = submit_action_class(performed: performed)
+
+    # act
+    result = run_action(action_class, submit: "carrier_pigeon")
+
+    # assert
+    assert_equal [:invalid, [], 0], [result.status, performed, action_events.size]
+  end
+
+  def test_missing_submit_is_invalid_when_the_action_declares_submits
+    # arrange
+    configure_actions
+    performed = []
+    action_class = submit_action_class(performed: performed)
+
+    # act
+    results = [run_action(action_class), run_action(action_class, submit: "")]
+
+    # assert
+    assert_equal [[:invalid, :invalid], [], 0], [results.map(&:status), performed, action_events.size]
+  end
+
+  def test_submit_is_ignored_when_the_action_declares_no_submits
+    # arrange
+    configure_actions
+    performed = []
+    action_class = build_action("Sweep") do
+      on :global
+      perform { performed << submitted }
+    end
+
+    # act
+    result = run_action(action_class, submit: "email")
+
+    # assert
+    assert_equal [:ok, [:email]], [result.status, performed]
+  end
+
+  def test_invalid_submit_does_not_open_the_event_or_touch_the_record
+    # arrange
+    configure_actions
+    Lucid::Backoffice.configuration.email_available = -> { false }
+    account = create_account(role: "teacher")
+    action_class = role_action do
+      submit :email, label: "Enviar", if: -> { email_available? }
+    end
+
+    # act
+    result = run_action(action_class, record: account, params: { role: "coordinator" }, submit: "email")
+
+    # assert
+    assert_equal [:invalid, "teacher", 0], [result.status, account.reload.role, action_events.size]
+  end
 end

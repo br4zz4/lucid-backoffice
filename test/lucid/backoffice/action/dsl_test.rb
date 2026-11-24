@@ -335,4 +335,122 @@ class ActionDslTest < ActionTest
     # assert
     assert_equal [:invalid, ["Name can't be blank"], ["Name can't be blank"], true], values
   end
+
+  def test_submit_is_stored_with_key_label_and_condition
+    # arrange
+    condition = -> { true }
+    action_class = build_action do
+      submit :email, label: "Enviar por e-mail", if: condition
+      submit :screen, label: "Mostrar na tela"
+    end
+
+    # act
+    submits = action_class.submits
+
+    # assert
+    assert_equal [[:email, "Enviar por e-mail", condition], [:screen, "Mostrar na tela", nil]], submits.map { |option| [option[:key], option[:label], option[:condition]] }
+  end
+
+  def test_submit_key_is_a_symbol
+    # arrange
+    action_class = build_action { submit "email", label: "Enviar" }
+
+    # act
+    key = action_class.submits.sole[:key]
+
+    # assert
+    assert_equal :email, key
+  end
+
+  def test_action_without_submit_declares_no_submits
+    # arrange
+    action_class = build_action { on :accounts }
+
+    # act
+    submits = action_class.submits
+
+    # assert
+    assert_empty submits
+  end
+
+  def test_submits_are_not_shared_between_actions
+    # arrange
+    first = build_action("First") { submit :email, label: "Enviar" }
+    second = build_action("Second") { on :accounts }
+
+    # act
+    submits = [first.submits.size, second.submits.size]
+
+    # assert
+    assert_equal [1, 0], submits
+  end
+
+  def test_available_submits_keep_the_declared_order_and_drop_the_ones_whose_condition_fails
+    # arrange
+    action_class = build_action do
+      submit :screen, label: "Mostrar na tela"
+      submit :email, label: "Enviar por e-mail", if: -> { false }
+      submit :both, label: "Os dois", if: -> { true }
+    end
+
+    # act
+    keys = action_class.new.available_submits.map { |option| option[:key] }
+
+    # assert
+    assert_equal %i[screen both], keys
+  end
+
+  def test_submit_condition_is_evaluated_in_the_action_instance
+    # arrange
+    action_class = build_action do
+      on :accounts
+      submit :email, label: "Enviar por e-mail", if: -> { record.nickname == "Mia" }
+    end
+    mia = Account.new(nickname: "Mia")
+    zed = Account.new(nickname: "Zed")
+
+    # act
+    keys = [mia, zed].map { |account| action_class.new(record: account).available_submits.map { |option| option[:key] } }
+
+    # assert
+    assert_equal [[:email], []], keys
+  end
+
+  def test_submit_condition_can_read_the_email_availability
+    # arrange
+    configure_minimal { |config| config.email_available = -> { false } }
+    action_class = build_action { submit :email, label: "Enviar por e-mail", if: -> { email_available? } }
+    action = action_class.new
+
+    # act
+    before = action.available_submits
+    Lucid::Backoffice.configuration.email_available = -> { true }
+    after = action.available_submits.map { |option| option[:key] }
+
+    # assert
+    assert_empty before
+    assert_equal [:email], after
+  end
+
+  def test_submitted_is_the_chosen_option_as_a_symbol
+    # arrange
+    action_class = build_action { submit :email, label: "Enviar" }
+
+    # act
+    submitted = [action_class.new(submit: "email").submitted, action_class.new(submit: :screen).submitted]
+
+    # assert
+    assert_equal %i[email screen], submitted
+  end
+
+  def test_submitted_is_nil_when_nothing_was_chosen
+    # arrange
+    action_class = build_action { on :accounts }
+
+    # act
+    submitted = [action_class.new.submitted, action_class.new(submit: "").submitted]
+
+    # assert
+    assert_equal [nil, nil], submitted
+  end
 end

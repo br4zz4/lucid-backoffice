@@ -18,8 +18,15 @@
         <label><%= t("lucid_backoffice.type_to_confirm", expected: expected) %></label>
         <%= text_field_tag :confirmation, nil, autocomplete: "off", data: { lb_confirmation: true } %>
       <% end %>
-      <%= submit_tag t("lucid_backoffice.execute"), class: "lb-button #{"lb-button-danger" if expected}", formmethod: :post, formaction: lb_routes.run_action_path(action_key: @action_class.key),
-                     disabled: true, name: nil, data: { lb_submit: true } %>
+      <% if @action_class.submits.any? %>
+        <% @action.available_submits.each do |option| %>
+          <%= button_tag option[:label], type: "submit", class: "lb-button #{"lb-button-danger" if expected}", formmethod: :post, formaction: lb_routes.run_action_path(action_key: @action_class.key),
+                         disabled: true, name: "submit", value: option[:key], data: { lb_submit: true } %>
+        <% end %>
+      <% else %>
+        <%= submit_tag t("lucid_backoffice.execute"), class: "lb-button #{"lb-button-danger" if expected}", formmethod: :post, formaction: lb_routes.run_action_path(action_key: @action_class.key),
+                       disabled: true, name: nil, data: { lb_submit: true } %>
+      <% end %>
     <% end %>
   <% end %>
 <% end %>

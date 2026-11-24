@@ -16,6 +16,9 @@ module Lucid
       # Reveals.
       attr_accessor :reveal_duration, :reveal_reason_min
 
+      # Whether the app can send email: a callable, or nil to read the ActionMailer settings.
+      attr_writer :email_available
+
       # Activity trail.
       attr_accessor :activity_retention, :activity_purge_batch
 
@@ -27,6 +30,11 @@ module Lucid
       attr_reader :brand_color, :theme, :stylesheet, :extra_stylesheets
 
       STYLESHEET_REFERENCE = %r{\A(/(?!/)|https?://)[^\s"'<>\\]*\z}
+
+      # @return [Boolean] whether Actions may offer to send an email
+      def email_available?
+        @email_available.respond_to?(:call) ? !!@email_available.call : Mail.available?
+      end
 
       def impersonation
         @impersonation ||= Impersonation.new(nil, nil, nil, nil, nil, 30 * 60, nil, [])

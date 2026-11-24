@@ -107,6 +107,14 @@ module Lucid
           guards << { message: message, block: binding.local_variable_get(:if) || block }
         end
 
+        # One way to execute the action: each becomes a button at the final step, in the order declared,
+        # and only the ones whose +if+ holds (evaluated in the action) are offered.
+        def submit(key, label:, if: nil)
+          submits << { key: key.to_sym, label: label, condition: binding.local_variable_get(:if) }
+        end
+
+        def submits = (@submits ||= [])
+
         def conditions = (@conditions ||= [])
         def guards = (@guards ||= [])
 
@@ -136,15 +144,23 @@ module Lucid
         end
       end
 
-      attr_reader :record, :tenant, :params, :values, :reason
+      attr_reader :record, :tenant, :params, :values, :reason, :submitted
 
-      def initialize(record: nil, tenant: nil, params: {}, reason: nil)
+      def initialize(record: nil, tenant: nil, params: {}, reason: nil, submit: nil)
+        @submitted = submit.presence&.to_sym
         @record = record
         @reason = reason
         @tenant = tenant
         @params = params.to_h.with_indifferent_access
         @values = {}
       end
+
+      # @return [Array<Hash>] the submit options offered right now
+      def available_submits
+        self.class.submits.select { |option| option[:condition].nil? || instance_exec(&option[:condition]) }
+      end
+
+      def email_available? = Lucid::Backoffice.configuration.email_available?
 
       # Coerces the params into the declared fields.
       # @raise [ArgumentError] a value is invalid or a required field is missing
@@ -228,6 +244,7 @@ module Lucid
         names = command.respond_to?(:attribute_names) ? command.attribute_names : []
         attributes[:record] = record if names.include?(:record)
         attributes[:tenant] = tenant if names.include?(:tenant)
+        attributes[:submit] = submitted if names.include?(:submit)
         command.call(**attributes)
       end
 

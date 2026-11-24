@@ -75,10 +75,10 @@ class EditableTest < ActionTest
     end
   end
 
-  def editable_resource(*fields, **options)
+  def editable_resource(*fields, **options, &block)
     Class.new(Lucid::Backoffice::Resource) do
       table :profiles
-      editable(*fields, **options)
+      editable(*fields, **options, &block)
     end
   end
 
@@ -477,5 +477,124 @@ class EditableTest < ActionTest
     # assert
     assert_includes hidden_error.message, ":kind"
     assert_includes secret_error.message, ":secret_code"
+  end
+
+  def test_creatable_block_overrides_the_label_and_the_field_type_and_choices
+    # arrange
+    configure_records
+
+    # act
+    action = gadget_resource do
+      creatable :name, :kind do
+        label "Cadastrar equipamento"
+        field :kind, :select, choices: -> { %w[ferramenta peca] }, default: "peca", required: true
+      end
+    end.creatable_action
+    kind = action.fields[:kind]
+
+    # assert
+    assert_equal "Cadastrar equipamento", action.label
+    assert_equal [:select, "peca", true, %w[ferramenta peca]], [kind.type, kind.default, kind.required, kind.choices.call]
+    assert_equal %i[name kind], action.fields.keys
+  end
+
+  def test_creatable_block_adds_a_submit_and_keeps_the_generated_defaults
+    # arrange
+    configure_records
+
+    # act
+    action = gadget_resource do
+      creatable :name, :kind do
+        submit :screen, label: "Criar"
+        submit :email, label: "Criar e avisar", if: -> { email_available? }
+      end
+    end.creatable_action
+
+    # assert
+    assert_equal %i[screen email], action.submits.map { |option| option[:key] }
+    assert_equal [:create_record, :record, true], [action.permission, action.landing, action.collection?]
+  end
+
+  def test_creatable_block_runs_after_the_defaults_so_it_can_override_the_permission
+    # arrange
+    configure_records
+
+    # act
+    action = gadget_resource { creatable(:name) { permission :run_action } }.creatable_action
+
+    # assert
+    assert_equal :run_action, action.permission
+  end
+
+  def test_creatable_with_a_submit_runs_the_chosen_option
+    # arrange
+    configure_records
+    action = gadget_resource { creatable(:name) { submit :screen, label: "Criar" } }.creatable_action
+
+    # act
+    result = run_action(action, params: { name: "Torno" }, submit: "screen")
+
+    # assert
+    assert_equal [:ok, ["Torno"]], [result.status, Gadget.pluck(:name)]
+  end
+
+  def test_creatable_without_a_block_keeps_the_defaults
+    # arrange
+    configure_records
+
+    # act
+    action = gadget_resource { creatable :name, :kind }.creatable_action
+
+    # assert
+    assert_equal ["Novo registro", []], [action.label, action.submits]
+  end
+
+  def test_editable_block_overrides_the_label_and_the_field
+    # arrange
+    configure_profiles
+
+    # act
+    action = editable_resource(:name, :age) do
+      label "Corrigir cadastro"
+      field :age, :string, default: "18"
+      submit :email, label: "Salvar e avisar"
+    end.editable_action
+
+    # assert
+    assert_equal "Corrigir cadastro", action.label
+    assert_equal [:string, "18"], [action.fields[:age].type, action.fields[:age].default]
+    assert_equal [:email], action.submits.map { |option| option[:key] }
+    assert_equal :update_record, action.permission
+  end
+
+  def test_destroyable_block_overrides_the_label_and_adds_a_submit
+    # arrange
+    configure_records
+
+    # act
+    action = gadget_resource do
+      destroyable do
+        label "Remover equipamento"
+        submit :screen, label: "Remover"
+      end
+    end.destroyable_action
+
+    # assert
+    assert_equal ["Remover equipamento", %i[screen], :high, :list], [action.label, action.submits.map { |option| option[:key] }, action.danger, action.landing]
+  end
+
+  def test_destroyable_block_does_not_leak_into_other_resources
+    # arrange
+    configure_records
+    gadget_resource { destroyable { label "Remover equipamento" } }
+
+    # act
+    other = Class.new(Lucid::Backoffice::Resource) do
+      table :profiles
+      destroyable
+    end.destroyable_action
+
+    # assert
+    assert_equal "Excluir registro", other.label
   end
 end
