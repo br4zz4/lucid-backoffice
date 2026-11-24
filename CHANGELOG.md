@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4
+
+- The actions of a record are evaluated inside its tenant, so guards that query tenant tables (`unavailable`, `only_if`) work on the data screen.
+
 ## 0.2.3
 
 - `Action.redirect_to { |value| url }`: where the operator goes after a successful run (used by impersonation to open the tenant host).

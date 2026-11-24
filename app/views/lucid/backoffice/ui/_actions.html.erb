@@ -1,9 +1,10 @@
 <% actions = Lucid::Backoffice::Action.for_target(target).select { |a| allowed?(a.permission, { tenant: tenant, action: a.key }) } %>
-<% if actions.any? %>
+<% entries = tenancy.with(tenant) { actions.map { |a| instance = a.new(record: record, tenant: tenant); [a, instance.visible?, instance.visible? ? instance.unavailable_reason : nil] } } %>
+<% entries = entries.select { |_a, visible, _reason| visible } %>
+<% if entries.any? %>
   <section class="lb-section">
     <h2><%= t("lucid_backoffice.actions") %></h2>
-    <% actions.select { |a| a.new(record: record, tenant: tenant).visible? }.each do |a| %>
-      <% reason = a.new(record: record, tenant: tenant).unavailable_reason %>
+    <% entries.each do |a, _visible, reason| %>
       <% path = lb_routes.new_action_path(action_key: a.key, record_id: record&.id, tenant_id: tenant && tenancy.identifier(tenant)) %>
       <% if reason %><span class="lb-button" aria-disabled="true" title="<%= reason %>"><%= a.label %></span><small><%= reason %></small>
       <% else %><a class="lb-button" href="<%= path %>"><%= a.label %></a><% end %>
