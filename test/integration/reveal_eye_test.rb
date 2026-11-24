@@ -259,6 +259,62 @@ class RevealEyeIntegrationTest < PanelTest
     assert eye_dialog
   end
 
+  def authorize_categories(allowed)
+    ->(_operator, permission, context) { permission == :reveal ? (context.key?(:category) && allowed.include?(context[:category])) : true }
+  end
+
+  def test_eye_is_absent_when_every_category_is_denied
+    # arrange
+    allowed = authorize_categories([])
+    configure_multi { |config| config.authorize = allowed }
+
+    # act
+    get "/backoffice/tenants/alfa", headers: as(1)
+
+    # assert
+    assert_empty dom.css(".lb-eye")
+    assert_empty dom.css("dialog.lb-reveal-dialog")
+  end
+
+  def test_eye_is_absent_when_every_category_is_denied_without_tenancy
+    # arrange
+    allowed = authorize_categories([])
+    configure_panel { |config| config.tenancy = :none; config.authorize = allowed }
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    assert_empty dom.css(".lb-eye")
+    assert_empty dom.css("dialog.lb-reveal-dialog")
+  end
+
+  def test_dialog_lists_only_the_categories_the_operator_may_reveal
+    # arrange
+    allowed = authorize_categories(%w[contact documents])
+    configure_multi { |config| config.authorize = allowed }
+
+    # act
+    get "/backoffice/tenants/alfa", headers: as(1)
+
+    # assert
+    assert eye
+    assert_equal %w[contact documents], eye_dialog.css(".lb-reveal-categories .lb-tag").map { |tag| tag.text.strip }.sort
+  end
+
+  def test_eye_shows_with_a_single_revealable_category
+    # arrange
+    allowed = authorize_categories(%w[contact])
+    configure_multi { |config| config.authorize = allowed }
+
+    # act
+    get "/backoffice/tenants/alfa", headers: as(1)
+
+    # assert
+    assert eye
+    assert_equal %w[contact], eye_dialog.css(".lb-reveal-categories .lb-tag").map { |tag| tag.text.strip }
+  end
+
   def test_other_operators_reveals_do_not_light_the_eye
     # arrange
     configure_multi

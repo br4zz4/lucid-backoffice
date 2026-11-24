@@ -4,7 +4,7 @@ module Lucid
       PERIODS = { "24h" => 1.day, "7d" => 7.days, "30d" => 30.days }.freeze
 
       def index
-        authorize!(:view_activity)
+        authorize!(:view_activity, { tenant: current_tenant })
         scope = Activity::Event.order(occurred_at: :desc, id: :desc)
         if current_tenant
           scope = scope.where(tenant_identifier: tenancy.identifier(current_tenant))

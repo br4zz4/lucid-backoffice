@@ -1,7 +1,7 @@
 <%= render "lucid/backoffice/ui/page_header", title: t("lucid_backoffice.activity"),
       crumbs: lb_context_crumbs + [[t("lucid_backoffice.activity"), nil]] %>
 <%= form_with url: (current_tenant ? tenant_activity_path(tenant_id: tenancy.identifier(current_tenant)) : activity_path), method: :get, class: "lb-filters" do %>
-  <% unless current_tenant %><%= text_field_tag :tenant, params[:tenant], placeholder: t("lucid_backoffice.tenant") %><% end %>
+  <% if tenancy.multi_tenant? && !current_tenant %><%= text_field_tag :tenant, params[:tenant], placeholder: t("lucid_backoffice.tenant") %><% end %>
   <%= text_field_tag :actor_type, params[:actor_type], placeholder: t("lucid_backoffice.actor") %>
   <%= text_field_tag :name, params[:name], placeholder: t("lucid_backoffice.name") %>
   <%= text_field_tag :outcome, params[:outcome], placeholder: t("lucid_backoffice.outcome") %>
@@ -10,7 +10,7 @@
 <% end %>
 <div class="lb-table-wrap">
   <table class="lb-table">
-    <thead><tr><th><%= t("lucid_backoffice.when") %></th><th><%= t("lucid_backoffice.name") %></th><th><%= t("lucid_backoffice.actor") %></th><th><%= t("lucid_backoffice.tenant") %></th><th><%= t("lucid_backoffice.outcome") %></th><th><%= t("lucid_backoffice.subjects") %></th><th><%= t("lucid_backoffice.reason") %></th></tr></thead>
+    <thead><tr><th><%= t("lucid_backoffice.when") %></th><th><%= t("lucid_backoffice.name") %></th><th><%= t("lucid_backoffice.actor") %></th><% if tenancy.multi_tenant? %><th><%= t("lucid_backoffice.tenant") %></th><% end %><th><%= t("lucid_backoffice.outcome") %></th><th><%= t("lucid_backoffice.subjects") %></th><th><%= t("lucid_backoffice.reason") %></th></tr></thead>
     <tbody>
       <% @groups.each do |request_id, events| %>
         <% events.each_with_index do |event, index| %>
@@ -18,7 +18,7 @@
             <td><%= l(event.occurred_at, format: :short) %></td>
             <td><%= event.name %></td>
             <td><%= event.actor_type %><%= " ##{event.actor_id}" if event.actor_id %></td>
-            <td><%= event.tenant_identifier %></td>
+            <% if tenancy.multi_tenant? %><td><%= event.tenant_identifier %></td><% end %>
             <td><%= event.outcome %></td>
             <td><%= Array(event.subjects).map { |s| [s["type"], s["name"], s["id"]].compact.join(" ") }.join(", ") %></td>
             <td><%= event.reason %></td>
