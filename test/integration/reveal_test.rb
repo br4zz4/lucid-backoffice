@@ -19,8 +19,8 @@ class RevealIntegrationTest < PanelTest
     end
   end
 
-  def reveal(operator: 1, tenant: "alfa", category: "contact", reason: REASON, referer: PATH)
-    post "/backoffice/reveals", params: { tenant_id: tenant, category: category, reason: reason }, headers: as(operator).merge("Referer" => referer)
+  def reveal(operator: 1, tenant: "alfa", reason: REASON, referer: PATH, **extra)
+    post "/backoffice/reveals", params: { tenant_id: tenant, reason: reason }.merge(extra), headers: as(operator).merge("Referer" => referer)
   end
 
   def emails(path = PATH, operator: 1)
@@ -55,7 +55,7 @@ class RevealIntegrationTest < PanelTest
     assert_equal MASKED, emails["email"]
   end
 
-  def test_unknown_category_reveals_nothing
+  def test_category_param_is_ignored_even_when_unknown
     # arrange
     category = "nonexistent"
 
@@ -64,11 +64,12 @@ class RevealIntegrationTest < PanelTest
     get(response.location, headers: as(1))
 
     # assert
-    assert_equal 0, Lucid::Backoffice::Reveal.count
-    assert dom.at_css(".lb-flash-error")
+    assert_equal revealable_categories.sort, Lucid::Backoffice::Reveal.pluck(:category).sort
+    assert dom.at_css(".lb-flash-ok")
+    assert_nil dom.at_css(".lb-flash-error")
   end
 
-  def test_valid_reason_reveals_category_in_clear_for_the_operator
+  def test_valid_reason_reveals_every_allowed_category_in_clear_for_the_operator
     # arrange
     before = emails
 
@@ -82,11 +83,11 @@ class RevealIntegrationTest < PanelTest
     assert notice
     assert_equal MASKED, before["email"]
     assert_equal SECRETS[:email], after["email"]
-    assert_equal MASKED, after["cpf"]
-    assert_equal MASKED, after["name"]
+    assert_equal SECRETS[:cpf], after["cpf"]
+    assert_equal SECRETS[:name], after["name"]
   end
 
-  def test_only_the_requested_category_is_revealed
+  def test_posted_category_does_not_narrow_the_reveal
     # arrange
     reveal(category: "documents")
 
@@ -94,9 +95,9 @@ class RevealIntegrationTest < PanelTest
     row = emails
 
     # assert
-    assert_equal MASKED, row["email"]
+    assert_equal SECRETS[:email], row["email"]
     assert_equal SECRETS[:cpf], row["cpf"]
-    assert_equal MASKED, row["name"]
+    assert_equal revealable_categories.size, Lucid::Backoffice::Reveal.count
   end
 
   def test_reveal_is_scoped_to_the_tenant
@@ -153,85 +154,76 @@ class RevealIntegrationTest < PanelTest
     assert_equal MASKED, @after["email"]
   end
 
-  def test_delete_ends_the_reveal_on_the_next_request
+  def test_delete_by_id_route_no_longer_exists
     # arrange
     reveal
-    reveal_id = Lucid::Backoffice::Reveal.sole.id
-    revealed = emails
+    reveal_id = Lucid::Backoffice::Reveal.first.id
 
     # act
-    delete "/backoffice/reveals/#{reveal_id}", headers: as(1).merge("Referer" => PATH)
-    after = emails
+    status = begin
+      delete "/backoffice/reveals/#{reveal_id}", headers: as(1)
+      response.status
+    rescue ActionController::RoutingError
+      404
+    end
 
     # assert
-    assert_equal SECRETS[:email], revealed["email"]
-    assert_response :ok
-    assert_equal MASKED, after["email"]
-    assert_equal 1, events("backoffice.reveal.revoke").size
+    assert_equal 404, status
+    assert_equal revealable_categories.size, Lucid::Backoffice::Reveal.active.count
   end
 
-  def test_other_operator_cannot_end_a_reveal_without_permission
-    # arrange
-    reveal
-    reveal_id = Lucid::Backoffice::Reveal.sole.id
-    configure_tenants(permissions: { 1 => %i[browse view_tenant reveal], 3 => %i[browse] })
-
-    # act
-    delete "/backoffice/reveals/#{reveal_id}", headers: as(3)
-
-    # assert
-    assert_response :forbidden
-    assert_nil Lucid::Backoffice::Reveal.sole.revoked_at
-  end
-
-  def test_grant_records_event_with_reason_category_and_tenant_without_values
+  def test_grant_records_one_event_per_category_with_reason_and_tenant_without_values
     # arrange
     insert_student("alfa")
 
     # act
     reveal
-    event = events("backoffice.reveal.grant").sole
+    granted = events("backoffice.reveal.grant")
+    contact = granted.find { |event| event.payload == { "category" => "contact" } }
 
     # assert
-    assert_equal REASON, event.reason
-    assert_equal({ "category" => "contact" }, event.payload)
-    assert_equal "alfa", event.tenant_identifier
-    assert_equal 1, event.actor_id
-    assert_equal "PanelOperator", event.actor_type
-    refute_includes event.to_json, SECRETS[:email]
+    assert_equal revealable_categories.sort, granted.map { |event| event.payload["category"] }.sort
+    assert_equal [REASON], granted.map(&:reason).uniq
+    assert_equal ["alfa"], granted.map(&:tenant_identifier).uniq
+    assert_equal [1], granted.map(&:actor_id).uniq
+    assert_equal "PanelOperator", contact.actor_type
+    refute_includes granted.to_json, SECRETS[:email]
   end
 
-  def test_tenant_page_offers_reveal_form_with_disabled_submit_and_min_length
+  def test_tenant_page_offers_the_eye_form_with_disabled_submit_and_min_length
     # arrange
     path = "/backoffice/tenants/alfa"
 
     # act
     get path, headers: as(1)
-    forms = dom.css("form.lb-reason-form")
+    forms = dom.css("dialog.lb-reveal-dialog form[data-lb-reason-form]")
 
     # assert
     assert_response :ok
-    assert_equal 6, forms.size
+    assert_equal 1, forms.size
     assert_equal "/backoffice/reveals", forms.first["action"]
-    assert_equal "10", forms.first.at_css("input[name=reason]")["minlength"]
+    assert_equal "10", forms.first.at_css("textarea[name=reason]")["minlength"]
     assert_equal "alfa", forms.first.at_css("input[name=tenant_id]")["value"]
-    assert forms.first.at_css("input[type=submit][disabled]")
+    assert forms.first.at_css("[data-lb-submit][disabled]")
+    assert_empty forms.first.css("[name=category]")
   end
 
-  def test_tenant_page_offers_end_button_for_active_reveal
+  def test_no_page_renders_the_per_category_reveal_list
     # arrange
     reveal
+    paths = %w[/backoffice/data /backoffice/data/students /backoffice/tenants/alfa /backoffice/tenants/alfa/data /backoffice/tenants/alfa/data/students]
 
     # act
-    get "/backoffice/tenants/alfa", headers: as(1)
-    buttons = dom.css("section.lb-reveal form.button_to[method=post] input[name=_method][value=delete]")
+    found = paths.to_h do |path|
+      get path, headers: as(1)
+      [path, dom.css("section.lb-reveal, form.lb-reason-form").size]
+    end
 
     # assert
-    assert_equal 1, buttons.size
-    assert_equal 5, dom.css("form.lb-reason-form").size
+    assert_equal paths.to_h { |path| [path, 0] }, found
   end
 
-  def test_tenant_page_hides_reveal_form_without_permission
+  def test_tenant_page_hides_the_eye_form_without_permission
     # arrange
     configure_tenants(permissions: { 1 => %i[view_tenant] })
 
@@ -240,17 +232,18 @@ class RevealIntegrationTest < PanelTest
 
     # assert
     assert_response :ok
-    assert_empty dom.css("form.lb-reason-form")
+    assert_empty dom.css("dialog.lb-reveal-dialog")
+    assert_empty dom.css("form[data-lb-reason-form]")
   end
 
-  def test_single_tenant_reveal_is_per_operator_and_category
+  def test_single_tenant_reveal_is_per_operator
     # arrange
     classification = @classification
     configure_panel(permissions: { 1 => %i[browse reveal], 2 => %i[browse] }) { |config| config.classification_path = classification }
     insert_student
 
     # act
-    post "/backoffice/reveals", params: { category: "contact", reason: REASON }, headers: as(1)
+    post "/backoffice/reveals", params: { reason: REASON }, headers: as(1)
     mine = emails("/backoffice/data/students", operator: 1)
     theirs = emails("/backoffice/data/students", operator: 2)
 
@@ -259,7 +252,7 @@ class RevealIntegrationTest < PanelTest
     assert_equal MASKED, theirs["email"]
   end
 
-  def test_single_tenant_panel_offers_a_reveal_form_to_operators_with_permission
+  def test_single_tenant_panel_offers_the_eye_form_to_operators_with_permission
     # arrange
     configure_panel(permissions: { 1 => %i[browse reveal] })
     insert_student
@@ -268,7 +261,7 @@ class RevealIntegrationTest < PanelTest
     get "/backoffice/data/students", headers: as(1)
 
     # assert
-    assert_equal "/backoffice/reveals", dom.at_css("form.lb-reason-form")&.[]("action")
+    assert_equal "/backoffice/reveals", dom.at_css("dialog.lb-reveal-dialog form[data-lb-reason-form]")&.[]("action")
   end
 
   def reveal_all(operator: 1, tenant: "alfa", reason: REASON, referer: PATH)
@@ -382,7 +375,7 @@ class RevealIntegrationTest < PanelTest
     assert_empty events("backoffice.reveal.grant")
   end
 
-  def test_post_with_category_keeps_revealing_only_that_category
+  def test_post_with_category_still_reveals_every_category
     # arrange
     reveal(category: "contact")
 
@@ -391,8 +384,8 @@ class RevealIntegrationTest < PanelTest
 
     # assert
     assert_equal SECRETS[:email], row["email"]
-    assert_equal MASKED, row["cpf"]
-    assert_equal 1, Lucid::Backoffice::Reveal.count
+    assert_equal SECRETS[:cpf], row["cpf"]
+    assert_equal revealable_categories.size, Lucid::Backoffice::Reveal.count
   end
 
   def test_delete_collection_revokes_every_active_reveal_and_redirects_back
@@ -456,7 +449,7 @@ class RevealIntegrationTest < PanelTest
 
   def test_revealed_values_still_hide_secret_columns
     # arrange
-    %w[contact documents minors financial free_text unclassified].each { |category| reveal(category: category) }
+    reveal
 
     # act
     get PATH, headers: as(1)

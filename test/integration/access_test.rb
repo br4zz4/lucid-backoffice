@@ -127,21 +127,7 @@ class AccessIntegrationTest < PanelTest
 
     # assert
     assert_response :redirect
-    assert_equal 1, Lucid::Backoffice::Reveal.count
-  end
-
-  def test_delete_without_csrf_token_is_rejected
-    # arrange
-    configure_panel(permissions: { 1 => %i[reveal] })
-    reveal = Lucid::Backoffice::Reveal.grant(operator: PanelOperator.new(1), category: "contact", reason: "investigar chamado 123")
-
-    # act
-    with_forgery_protection do
-      assert_raises(ActionController::InvalidAuthenticityToken) { delete "/backoffice/reveals/#{reveal.id}", headers: as(1) }
-    end
-
-    # assert
-    assert_nil reveal.reload.revoked_at
+    assert_equal Lucid::Backoffice.configuration.categories.size - 1, Lucid::Backoffice::Reveal.count
   end
 
   def test_delete_collection_without_csrf_token_is_rejected
@@ -181,6 +167,6 @@ class AccessIntegrationTest < PanelTest
     writing = routes.reject { |route| route.verb == "GET" }.map { |route| [route.verb, route.path.spec.to_s.sub("(.:format)", "")] }
 
     # assert
-    assert_equal [["POST", "/reveals"], ["DELETE", "/reveals"], ["DELETE", "/reveals/:id"], ["POST", "/actions/:action_key"]].sort, writing.sort
+    assert_equal [["POST", "/reveals"], ["DELETE", "/reveals"], ["POST", "/actions/:action_key"]].sort, writing.sort
   end
 end

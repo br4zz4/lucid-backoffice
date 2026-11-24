@@ -286,7 +286,7 @@ class RevealEyeIntegrationTest < PanelTest
     assert eye_dialog
   end
 
-  def test_old_per_category_list_still_renders_with_the_eye
+  def test_per_category_list_is_gone_and_the_eye_remains
     # arrange
     configure_multi
 
@@ -294,7 +294,7 @@ class RevealEyeIntegrationTest < PanelTest
     get "/backoffice/tenants/alfa/data/students", headers: as(1)
 
     # assert
-    assert dom.at_css("form.lb-reason-form")
+    assert_empty dom.css("form.lb-reason-form, section.lb-reveal")
     assert eye
   end
 
