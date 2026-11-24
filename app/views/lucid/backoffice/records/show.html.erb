@@ -11,3 +11,4 @@
     <dd><%= render "lucid/backoffice/ui/value", cell: cell %></dd>
   <% end %>
 </dl>
+<%= render "lucid/backoffice/ui/related", related: @related, record_id: params[:id] %>

@@ -181,4 +181,176 @@ class CatalogTest < DataTest
     # assert
     assert_empty columns
   end
+
+  def test_references_include_real_foreign_keys
+    # arrange
+    configure_minimal
+    connection.execute("ALTER TABLE public.students ADD COLUMN mentor_ref bigint")
+    connection.execute("ALTER TABLE public.students ADD CONSTRAINT fk_mentor FOREIGN KEY (mentor_ref) REFERENCES public.guardians (id)")
+
+    # act
+    references = Catalog.references("public", "students")
+
+    # assert
+    assert_equal "guardians", references["mentor_ref"]
+  end
+
+  def test_references_follow_the_naming_convention
+    # arrange
+    configure_minimal
+
+    # act
+    references = Catalog.references("public", "students")
+
+    # assert
+    assert_equal "guardians", references["guardian_id"]
+  end
+
+  def test_references_ignore_convention_when_target_table_is_missing
+    # arrange
+    configure_minimal
+    connection.execute("ALTER TABLE public.guardians ADD COLUMN ghost_id bigint")
+
+    # act
+    references = Catalog.references("public", "guardians")
+
+    # assert
+    refute references.key?("ghost_id")
+  end
+
+  def test_references_ignore_real_foreign_keys_to_hidden_tables
+    # arrange
+    configure_minimal { |config| config.hidden_tables = ["guardians"] }
+    connection.execute("ALTER TABLE public.students ADD CONSTRAINT fk_guardian FOREIGN KEY (guardian_id) REFERENCES public.guardians (id)")
+
+    # act
+    references = Catalog.references("public", "students")
+
+    # assert
+    refute references.key?("guardian_id")
+  end
+
+  def test_references_include_associations_declared_in_another_resource
+    # arrange
+    configure_minimal
+    connection.execute("ALTER TABLE public.students ADD COLUMN tutor bigint")
+    Class.new(Lucid::Backoffice::Resource) do
+      table :guardians
+      association :students, table: :students, foreign_key: :tutor
+    end
+
+    # act
+    references = Catalog.references("public", "students")
+
+    # assert
+    assert_equal "guardians", references["tutor"]
+  end
+
+  def test_real_foreign_key_wins_over_declared_association
+    # arrange
+    configure_minimal
+    connection.execute("CREATE TABLE public.classrooms (id bigserial PRIMARY KEY)")
+    connection.execute("ALTER TABLE public.students ADD COLUMN room bigint REFERENCES public.classrooms (id)")
+    Class.new(Lucid::Backoffice::Resource) do
+      table :guardians
+      association :students, table: :students, foreign_key: :room
+    end
+
+    # act
+    references = Catalog.references("public", "students")
+    connection.execute("ALTER TABLE public.students DROP COLUMN room")
+    connection.execute("DROP TABLE public.classrooms")
+
+    # assert
+    assert_equal "classrooms", references["room"]
+  end
+
+  def test_referenced_by_lists_real_foreign_keys_pointing_at_the_table
+    # arrange
+    configure_minimal
+    connection.execute("ALTER TABLE public.students ADD CONSTRAINT fk_guardian FOREIGN KEY (guardian_id) REFERENCES public.guardians (id)")
+
+    # act
+    referenced = Catalog.referenced_by("public", "guardians")
+
+    # assert
+    assert_equal [{ table: "students", column: "guardian_id" }], referenced
+  end
+
+  def test_referenced_by_ignores_conventions
+    # arrange
+    configure_minimal
+
+    # act
+    referenced = Catalog.referenced_by("public", "guardians")
+
+    # assert
+    assert_empty referenced
+  end
+
+  def test_referenced_by_includes_associations_of_the_resource_of_the_table
+    # arrange
+    configure_minimal
+    Class.new(Lucid::Backoffice::Resource) do
+      table :guardians
+      association :students, table: :students, foreign_key: :guardian_id
+    end
+
+    # act
+    referenced = Catalog.referenced_by("public", "guardians")
+
+    # assert
+    assert_equal [{ table: "students", column: "guardian_id" }], referenced
+  end
+
+  def test_referenced_by_does_not_repeat_a_foreign_key_also_declared
+    # arrange
+    configure_minimal
+    connection.execute("ALTER TABLE public.students ADD CONSTRAINT fk_guardian FOREIGN KEY (guardian_id) REFERENCES public.guardians (id)")
+    Class.new(Lucid::Backoffice::Resource) do
+      table :guardians
+      association :students, table: :students, foreign_key: :guardian_id
+    end
+
+    # act
+    referenced = Catalog.referenced_by("public", "guardians")
+
+    # assert
+    assert_equal 1, referenced.size
+  end
+
+  def test_referenced_by_ignores_associations_to_missing_tables_or_columns
+    # arrange
+    configure_minimal
+    Class.new(Lucid::Backoffice::Resource) do
+      table :guardians
+      association :ghosts, table: :ghosts, foreign_key: :guardian_id
+      association :students, table: :students, foreign_key: :no_such_column
+    end
+
+    # act
+    referenced = Catalog.referenced_by("public", "guardians")
+
+    # assert
+    assert_empty referenced
+  end
+
+  def test_referenced_by_is_limited_to_twenty
+    # arrange
+    configure_minimal
+    connection.execute("DROP SCHEMA IF EXISTS bo_limit CASCADE")
+    connection.execute("CREATE SCHEMA bo_limit")
+    connection.execute("CREATE TABLE bo_limit.guardians (id bigserial PRIMARY KEY)")
+    25.times do |index|
+      connection.execute("CREATE TABLE bo_limit.child_#{index} (id bigserial PRIMARY KEY, guardian_id bigint REFERENCES bo_limit.guardians (id))")
+    end
+
+    # act
+    referenced = Catalog.referenced_by("bo_limit", "guardians")
+    connection.execute("DROP SCHEMA bo_limit CASCADE")
+
+    # assert
+    assert_equal 20, referenced.size
+    assert_equal Catalog::MAX_RELATED, referenced.size
+  end
 end

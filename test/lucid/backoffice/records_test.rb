@@ -638,4 +638,115 @@ class RecordsTest < DataTest
     # assert
     assert_equal [2], ids(page)
   end
+
+  def test_foreign_key_cell_carries_a_link_to_the_target
+    # arrange
+    configure_minimal
+    insert_student(guardian_id: 9)
+
+    # act
+    row = list.rows.first
+
+    # assert
+    assert_equal({ table: "guardians", id: 9 }, cell(row, "guardian_id").link)
+    assert_nil cell(row, "id").link
+    assert_nil cell(row, "owner_type").link
+  end
+
+  def test_foreign_key_link_is_also_present_on_the_record
+    # arrange
+    configure_minimal
+    insert_student(guardian_id: 9)
+
+    # act
+    link = cell(find(1), "guardian_id").link
+
+    # assert
+    assert_equal({ table: "guardians", id: 9 }, link)
+  end
+
+  def test_null_foreign_key_has_no_link
+    # arrange
+    configure_minimal
+    insert_student(guardian_id: nil)
+
+    # act
+    row = list.rows.first
+
+    # assert
+    assert_nil cell(row, "guardian_id").link
+  end
+
+  def test_masked_foreign_key_has_no_link
+    # arrange
+    configure_minimal
+    write_classification("students:\n  mentor_ref: contact\n")
+    connection.execute("ALTER TABLE public.students ADD COLUMN mentor_ref bigint")
+    connection.execute("ALTER TABLE public.students ADD CONSTRAINT fk_mentor FOREIGN KEY (mentor_ref) REFERENCES public.guardians (id)")
+    connection.execute("INSERT INTO public.guardians (id, name) VALUES (9, 'g')")
+    insert_student(mentor_ref: 9)
+
+    # act
+    row = list.rows.first
+
+    # assert
+    assert cell(row, "mentor_ref").masked
+    assert_nil cell(row, "mentor_ref").link
+  end
+
+  def test_revealed_foreign_key_has_a_link
+    # arrange
+    write_classification("students:\n  mentor_ref: contact\n")
+    connection.execute("ALTER TABLE public.students ADD COLUMN mentor_ref bigint")
+    connection.execute("ALTER TABLE public.students ADD CONSTRAINT fk_mentor FOREIGN KEY (mentor_ref) REFERENCES public.guardians (id)")
+    connection.execute("INSERT INTO public.guardians (id, name) VALUES (9, 'g')")
+    insert_student(mentor_ref: 9)
+
+    # act
+    row = list(revealed: ["contact"]).rows.first
+
+    # assert
+    assert_equal({ table: "guardians", id: 9 }, cell(row, "mentor_ref").link)
+  end
+
+  def test_related_counts_rows_pointing_at_the_record
+    # arrange
+    configure_minimal
+    connection.execute("INSERT INTO public.guardians (id, name) VALUES (1, 'a'), (2, 'b')")
+    connection.execute("ALTER TABLE public.students ADD CONSTRAINT fk_guardian FOREIGN KEY (guardian_id) REFERENCES public.guardians (id)")
+    insert_student(guardian_id: 1)
+    insert_student(guardian_id: 1)
+    insert_student(guardian_id: 2)
+
+    # act
+    related = Records.related(schema: "public", table: "guardians", id: 1)
+
+    # assert
+    assert_equal [Records::Related.new(table: "students", column: "guardian_id", count: 2)], related
+  end
+
+  def test_related_omits_tables_with_zero_rows
+    # arrange
+    configure_minimal
+    connection.execute("INSERT INTO public.guardians (id, name) VALUES (1, 'a'), (2, 'b')")
+    connection.execute("ALTER TABLE public.students ADD CONSTRAINT fk_guardian FOREIGN KEY (guardian_id) REFERENCES public.guardians (id)")
+    insert_student(guardian_id: 1)
+
+    # act
+    related = Records.related(schema: "public", table: "guardians", id: 2)
+
+    # assert
+    assert_empty related
+  end
+
+  def test_related_with_a_non_numeric_id_is_empty
+    # arrange
+    configure_minimal
+
+    # act
+    related = Records.related(schema: "public", table: "guardians", id: "1;drop")
+
+    # assert
+    assert_empty related
+  end
 end

@@ -34,8 +34,10 @@ class DataTest < BackofficeTest
   end
 
   def drop_data_tables
-    connection.execute("DROP TABLE IF EXISTS public.students")
-    connection.execute("DROP TABLE IF EXISTS public.guardians")
+    connection.execute("DROP TABLE IF EXISTS public.students CASCADE")
+    connection.execute("DROP TABLE IF EXISTS public.guardians CASCADE")
+    connection.execute("DROP TABLE IF EXISTS public.classrooms CASCADE")
+    connection.execute("DROP SCHEMA IF EXISTS bo_limit CASCADE")
   end
 
   def insert_student(schema = "public", **values)

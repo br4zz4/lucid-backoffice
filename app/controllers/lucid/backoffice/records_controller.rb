@@ -35,6 +35,7 @@ module Lucid
         authorize!(:browse, { tenant: current_tenant, table: params[:table], model: model })
         PanelActivity.view(table: params[:table], id: params[:id].to_i, tenant: current_tenant)
         @cells = Records.find(schema: @schema, table: params[:table], id: params[:id], revealed: revealed, resource: resource)
+        @related = Records.related(schema: @schema, table: params[:table], id: params[:id])
       end
 
       private

@@ -922,4 +922,113 @@ class DataIntegrationTest < PanelTest
     # assert
     assert_match(%r{\A/backoffice/tenants/alfa/data/students\?q=[\w-]+\z}, URI(response.location).request_uri)
   end
+
+  def link_fixture(schema = "public")
+    connection.execute("INSERT INTO #{schema}.guardians (id, name) VALUES (42, 'g42'), (43, 'g43')")
+    connection.execute(
+      "ALTER TABLE #{schema}.students ADD CONSTRAINT fk_guardian FOREIGN KEY (guardian_id) REFERENCES #{schema}.guardians (id)"
+    )
+  end
+
+  def test_foreign_key_value_links_to_the_record
+    # arrange
+    insert_student
+
+    # act
+    get "/backoffice/data/students", headers: as(1)
+    list_link = dom.at_css("tbody a[href$='/guardians/42']")
+    get "/backoffice/data/students/1", headers: as(1)
+    detail_link = dom.at_css("dd a[href$='/guardians/42']")
+
+    # assert
+    assert_equal "/backoffice/data/guardians/42", list_link["href"]
+    assert_equal "42", list_link.text.strip
+    assert_equal "/backoffice/data/guardians/42", detail_link["href"]
+  end
+
+  def test_foreign_key_link_stays_in_the_tenant
+    # arrange
+    configure_tenant_data
+
+    # act
+    get "/backoffice/tenants/alfa/data/students/1", headers: as(1)
+
+    # assert
+    assert_equal "/backoffice/tenants/alfa/data/guardians/42", dom.at_css("dd a[title=guardians]")["href"]
+  end
+
+  def test_null_foreign_key_is_not_a_link
+    # arrange
+    insert_student(guardian_id: nil)
+
+    # act
+    get "/backoffice/data/students/1", headers: as(1)
+
+    # assert
+    assert_empty dom.css("dd a[title=guardians]")
+  end
+
+  def test_related_card_lists_tables_with_counts_and_filtered_links
+    # arrange
+    link_fixture
+    insert_student(guardian_id: 42)
+    insert_student(guardian_id: 42)
+    insert_student(guardian_id: 43)
+
+    # act
+    get "/backoffice/data/guardians/42", headers: as(1)
+    item = dom.at_css("section.lb-related li")
+
+    # assert
+    assert_equal I18n.t("lucid_backoffice.related"), dom.at_css("section.lb-related h2").text
+    assert_equal "students 2", item.text.squish
+    assert_equal "/backoffice/data/students?filter%5Bguardian_id%5D=42", item.at_css("a")["href"]
+  end
+
+  def test_following_the_related_link_lists_only_the_matching_rows
+    # arrange
+    link_fixture
+    insert_student(guardian_id: 42)
+    insert_student(guardian_id: 43)
+    insert_student(guardian_id: 42)
+    get "/backoffice/data/guardians/42", headers: as(1)
+    href = dom.at_css("section.lb-related li a")["href"]
+
+    # act
+    get href, headers: as(1)
+
+    # assert
+    assert_equal %w[1 3], dom.css("tbody tr td:first-child").map { |td| td.text.strip }
+    assert_empty dom.css(".lb-flash-warn")
+  end
+
+  def test_related_card_is_absent_without_references
+    # arrange
+    link_fixture
+    insert_student(guardian_id: 42)
+    connection.execute("INSERT INTO public.guardians (id, name) VALUES (50, 'lonely')")
+
+    # act
+    get "/backoffice/data/guardians/50", headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_empty dom.css("section.lb-related")
+  end
+
+  def test_tenant_related_card_links_inside_the_tenant_and_counts_its_schema
+    # arrange
+    configure_tenant_data
+    link_fixture("alfa")
+    insert_student("alfa", guardian_id: 42)
+    insert_student("beta", guardian_id: 42)
+
+    # act
+    get "/backoffice/tenants/alfa/data/guardians/42", headers: as(1)
+    item = dom.at_css("section.lb-related li")
+
+    # assert
+    assert_equal "students 2", item.text.squish
+    assert_equal "/backoffice/tenants/alfa/data/students?filter%5Bguardian_id%5D=42", item.at_css("a")["href"]
+  end
 end
