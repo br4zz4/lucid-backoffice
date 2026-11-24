@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0
+
+New layout: a sidebar with the current context, a top bar with the reveal eye and Sign out, a standard page header and an empty state. Works with and without tenancy.
+
+- **Context:** the shared context (the default, and the only one without tenancy) and one context per tenant. The sidebar card shows where the operator is, with "Switch" / "Leave tenant" only when the adapter answers `multi_tenant?`. Tables, activity and reveals belong to the context. New screen `/tenants/:tenant_id/activity`.
+- **Reveal eye:** one button in the top bar next to Sign out. One click opens a modal, one reason reveals every category the operator may reveal in the context (`Reveal.grant_all`); an active reveal shows "Revealed until HH:MM" and ends all of them with one click (`Reveal.revoke_all`). One `backoffice.reveal.grant`/`revoke` event per category.
+- **Page header:** breadcrumb in the top bar, title, subtitle and Actions on the right. More than 3 Actions go into a menu; an unavailable Action is a disabled button with the reason under it. Fixes the Action button text that was invisible on the accent background.
+- Empty tables show a message; the pager shows "1–50 of N"; the dashboard lists an "Enter →" button per tenant.
+- New `configuration.terms[:shared]` renames the shared context.
+
+### Breaking
+
+- `POST /reveals` ignores `category` and reveals every category the operator may reveal. `DELETE /reveals/:id` is gone; use `DELETE /reveals` (ends all the operator's reveals in the context).
+- The `ui/_reveal_toggle` partial and its CSS (`lb-reveal`, `lb-reason-form`) are gone, and so is the top `lb-nav`: apps that override `ui/*` or use `config.layout` should render `lucid/backoffice/shared/topbar` (sidebar, eye and Sign out) or keep their own layout.
+- `ui/_actions` no longer renders its own section and heading; it is rendered by `ui/_page_header`.
+- Custom tenancy adapters must answer `multi_tenant?` (the bundled ones do).
+
 ## 0.2.4
 
 - The actions of a record are evaluated inside its tenant, so guards that query tenant tables (`unavailable`, `only_if`) work on the data screen.

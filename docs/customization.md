@@ -2,6 +2,8 @@
 
 From least to most: nothing declared; a Resource; partials per resource; overriding `app/views/lucid/backoffice/ui/*` in your app; your own screens. The look has its own layers, below. `config.layout` replaces the layout.
 
+The default layout is made of partials you can override in your app: `lucid/backoffice/shared/_sidebar`, `shared/_context`, `shared/_topbar` (breadcrumb, reveal eye and Sign out), `ui/_page_header` (breadcrumb, title and Actions), `ui/_reveal_eye`, `ui/_empty` and `ui/_pager`. A screen of your own sets its breadcrumb with `content_for :lb_crumbs` or by rendering `ui/_page_header` with `crumbs:`.
+
 ## Look
 
 The default is black with a lime accent (inspired by brazza.tech), using system font stacks and no external requests.
