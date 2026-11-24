@@ -4,4 +4,3 @@
     <li><a href="<%= current_tenant ? tenant_table_path(tenant_id: tenancy.identifier(current_tenant), table: table) : table_path(table: table) %>"><%= table %></a></li>
   <% end %>
 </ul>
-<%= render "lucid/backoffice/ui/reveal_toggle", tenant: current_tenant, reveals: @reveals %>

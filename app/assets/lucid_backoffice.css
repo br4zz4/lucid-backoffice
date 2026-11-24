@@ -117,9 +117,7 @@
 .lb-button-danger { background: transparent; border-color: color-mix(in srgb, var(--lb-danger) 60%, transparent); color: var(--lb-danger); }
 .lb-button-danger:hover { background: color-mix(in srgb, var(--lb-danger) 12%, transparent); }
 
-.lb-reveal, .lb-section { margin-top: 2rem; }
-.lb-reason-form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: .5rem 0; }
-.lb-reason-form label { min-width: 7rem; color: var(--lb-muted); font-family: var(--lb-font-mono); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
+.lb-section { margin-top: 2rem; }
 .lb input[type=text], .lb input[type=search], .lb input[type=number], .lb input[type=date], .lb textarea, .lb select { background: var(--lb-surface); color: var(--lb-text); border: 1px solid var(--lb-border); border-radius: 999px; padding: .5rem .9rem; font: inherit; font-size: .9rem; }
 .lb textarea { border-radius: var(--lb-radius); }
 .lb input::placeholder, .lb textarea::placeholder { color: var(--lb-muted); }
