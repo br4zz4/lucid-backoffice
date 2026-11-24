@@ -3,3 +3,4 @@
 /test/dummy/tmp
 *.gem
 Gemfile.lock
+.worktrees/
