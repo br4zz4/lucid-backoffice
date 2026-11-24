@@ -167,6 +167,60 @@ class AccessIntegrationTest < PanelTest
     writing = routes.reject { |route| route.verb == "GET" }.map { |route| [route.verb, route.path.spec.to_s.sub("(.:format)", "")] }
 
     # assert
-    assert_equal [["POST", "/reveals"], ["DELETE", "/reveals"], ["POST", "/actions/:action_key"]].sort, writing.sort
+    expected = [["POST", "/reveals"], ["DELETE", "/reveals"], ["POST", "/actions/:action_key"],
+                ["POST", "/data/:table/query"], ["POST", "/tenants/:tenant_id/data/:table/query"]]
+    assert_equal expected.sort, writing.sort
+  end
+
+  def test_query_post_without_csrf_token_is_rejected
+    # arrange
+    configure_panel(permissions: { 1 => %i[browse] })
+
+    # act
+    with_forgery_protection do
+      assert_raises(ActionController::InvalidAuthenticityToken) do
+        post "/backoffice/data/students/query", params: { criteria: { search: "x" } }, headers: as(1)
+      end
+    end
+
+    # assert
+    assert_equal 0, Lucid::Backoffice::Activity::Event.where(name: "backoffice.browse").count
+  end
+
+  def test_query_post_with_csrf_token_redirects_with_a_token
+    # arrange
+    configure_panel(permissions: { 1 => %i[browse] })
+
+    # act
+    with_forgery_protection do
+      get "/backoffice/data/students", headers: as(1)
+      post "/backoffice/data/students/query", params: { criteria: { search: "x" }, authenticity_token: csrf_token }, headers: as(1)
+    end
+
+    # assert
+    assert_response :redirect
+    assert_match(%r{\A/backoffice/data/students\?q=[\w-]+\z}, URI(response.location).request_uri)
+  end
+
+  def test_query_post_without_browse_is_forbidden
+    # arrange
+    configure_panel(permissions: { 1 => %i[view_dashboard] })
+
+    # act
+    post "/backoffice/data/students/query", params: { criteria: { search: "x" } }, headers: as(1)
+
+    # assert
+    assert_response :forbidden
+  end
+
+  def test_query_post_without_operator_redirects_to_login
+    # arrange
+    configure_panel(permissions: { 1 => %i[browse] })
+
+    # act
+    post "/backoffice/data/students/query", params: { criteria: { search: "x" } }
+
+    # assert
+    assert_redirected_to "/login"
   end
 end

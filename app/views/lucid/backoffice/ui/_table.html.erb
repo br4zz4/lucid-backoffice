@@ -1,6 +1,6 @@
 <div class="lb-table-wrap">
   <table class="lb-table">
-    <thead><tr><% columns.each do |column| %><th><%= column.name %><% unless column.category == "public" %> <small><%= column.category %></small><% end %></th><% end %></tr></thead>
+    <thead><tr><% columns.each do |column| %><th><%= local_assigns[:sort] ? sort.call(column) : column.name %><% unless column.category == "public" %> <small><%= column.category %></small><% end %></th><% end %></tr></thead>
     <tbody>
       <% rows.each do |cells| %>
         <tr>

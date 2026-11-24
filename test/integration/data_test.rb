@@ -587,4 +587,339 @@ class DataIntegrationTest < PanelTest
     assert_equal "1 record", I18n.t("lucid_backoffice.records_count", count: 1, locale: :en)
     assert_equal "5 records", I18n.t("lucid_backoffice.records_count", count: 5, locale: :en)
   end
+
+  QUERY = "/backoffice/data/students/query".freeze
+  LIST = "/backoffice/data/students".freeze
+
+  def classify_and_reveal(reveal: true)
+    path = write_yaml("students:\n  email: contact\n  name: contact\n  cpf: documents\n")
+    configure_panel(permissions: { 1 => %i[browse reveal view_activity] }) { |config| config.classification_path = path }
+    return unless reveal
+
+    Lucid::Backoffice::Reveal.grant(operator: PanelOperator.new(1), category: "contact", reason: "investigar chamado 123")
+  end
+
+  def run_query(**params)
+    post QUERY, params: params, headers: as(1)
+    follow_redirect!(headers: as(1))
+  end
+
+  def names
+    dom.css("tbody tr").map { |tr| tr.css("td")[dom.css("thead th").index { |th| th.text.strip.start_with?("name") }].text.strip }
+  end
+
+  def test_query_post_redirects_with_a_token_and_the_url_carries_no_search_text
+    # arrange
+    classify_and_reveal
+
+    # act
+    post QUERY, params: { criteria: { search: "Zeferino" } }, headers: as(1)
+
+    # assert
+    assert_response :redirect
+    assert_match(%r{\A/backoffice/data/students\?q=[\w-]+\z}, URI(response.location).request_uri)
+    refute_includes response.location, "Zeferino"
+  end
+
+  def test_revealed_column_is_searchable_through_the_token
+    # arrange
+    classify_and_reveal
+    insert_student(name: "Zeferino Distinto")
+    insert_student(name: "Outra Pessoa", email: "outra@x.test", cpf: "000")
+
+    # act
+    run_query(criteria: { search: "Zeferino" })
+
+    # assert
+    assert_response :ok
+    assert_equal ["Zeferino Distinto"], names
+    assert_empty dom.css(".lb-flash-warn")
+  end
+
+  def test_browse_event_records_the_column_names_and_not_the_search_text
+    # arrange
+    classify_and_reveal
+    insert_student
+
+    # act
+    run_query(criteria: { search: "Zeferino" })
+    stored = Lucid::Backoffice::Activity::Event.order(:id).map { |event| event.attributes.values.join(" ") }.join(" ")
+
+    # assert
+    payload = events("backoffice.browse").last.payload
+    assert_includes payload["criteria"], "name"
+    assert_includes payload["criteria"], "email"
+    refute_includes stored, "Zeferino"
+  end
+
+  def test_search_is_ignored_with_a_warning_when_the_reveal_ends
+    # arrange
+    classify_and_reveal
+    insert_student(name: "Zeferino Distinto")
+    insert_student(name: "Outra Pessoa", email: "outra@x.test", cpf: "000")
+    post QUERY, params: { criteria: { search: "Zeferino" } }, headers: as(1)
+    token_url = response.location
+    Lucid::Backoffice::Reveal.where(revoked_at: nil).update_all(revoked_at: Time.current)
+    Lucid::Backoffice::Reveal.update_all(expires_at: 1.minute.ago)
+
+    # act
+    statements = capture_sql { get token_url, headers: as(1) }
+
+    # assert
+    assert_response :ok
+    refute_includes response.body, "Zeferino Distinto"
+    clauses = statements.grep(/Zeferino/).map { |sql| sql.split("WHERE", 2).last }
+    refute_empty clauses
+    clauses.each { |clause| refute_match(/"(name|email|cpf)"/, clause) }
+  end
+
+  def test_masked_column_is_not_offered_in_the_add_filter_select
+    # arrange
+    classify_and_reveal
+    insert_student
+
+    # act
+    get LIST, headers: as(1)
+    revealed_options = dom.css("select[name=filter_column] option").map(&:text)
+    Lucid::Backoffice::Reveal.update_all(revoked_at: Time.current, expires_at: 1.minute.ago)
+    get LIST, headers: as(1)
+    masked_options = dom.css("select[name=filter_column] option").map(&:text)
+
+    # assert
+    assert_includes revealed_options, "email"
+    assert_includes revealed_options, "name"
+    refute_includes revealed_options, "cpf"
+    assert_includes masked_options, "id"
+    assert_includes masked_options, "guardian_id"
+    assert_empty masked_options & %w[email name cpf]
+  end
+
+  def test_url_filter_on_a_masked_column_is_ignored_with_a_warning
+    # arrange
+    classify_and_reveal(reveal: false)
+    insert_student(email: "alvo@x.test")
+    insert_student(email: "outro@x.test")
+
+    # act
+    get LIST, params: { filter: { email: "alvo@x.test" } }, headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_equal 2, dom.css("tbody tr").size
+    assert_includes dom.at_css(".lb-flash-warn").text, "email"
+  end
+
+  def test_stored_filter_on_a_masked_column_is_ignored_with_a_warning
+    # arrange
+    classify_and_reveal
+    insert_student(email: "alvo@x.test")
+    insert_student(email: "outro@x.test")
+    post QUERY, params: { criteria: { filters: { email: "alvo@x.test" } } }, headers: as(1)
+    token_url = response.location
+    Lucid::Backoffice::Reveal.update_all(revoked_at: Time.current, expires_at: 1.minute.ago)
+
+    # act
+    get token_url, headers: as(1)
+
+    # assert
+    assert_equal 2, dom.css("tbody tr").size
+    assert_includes dom.at_css(".lb-flash-warn").text, "email"
+    refute_includes response.body, "alvo@x.test"
+  end
+
+  def test_filter_chips_show_the_active_filters_and_each_has_a_remove_control
+    # arrange
+    classify_and_reveal
+    insert_student(email: "alvo@x.test")
+    insert_student(email: "outro@x.test")
+
+    # act
+    run_query(filter_column: "email", filter_value: "alvo@x.test")
+    chips = dom.css(".lb-chip")
+    rows = dom.css("tbody tr").size
+    post QUERY, params: { criteria: { filters: {} } }, headers: as(1)
+    follow_redirect!(headers: as(1))
+
+    # assert
+    assert_equal 1, chips.size
+    assert_includes chips.first.text, "email"
+    assert_includes chips.first.text, "alvo@x.test"
+    assert_equal 1, chips.first.css("button").size
+    assert_equal 1, rows
+    assert_equal 2, dom.css("tbody tr").size
+    assert_empty dom.css(".lb-chip")
+  end
+
+  def test_chip_remove_form_keeps_the_other_filters
+    # arrange
+    classify_and_reveal
+    insert_student(email: "alvo@x.test")
+
+    # act
+    run_query(criteria: { filters: { email: "alvo@x.test", guardian_id: "42" } })
+    forms = dom.css("form.lb-chip")
+    removing_email = forms.find { |form| form.text.include?("email") }
+    kept = removing_email.css("input[type=hidden]").map { |input| [input["name"], input["value"]] }.to_h
+
+    # assert
+    assert_equal 2, forms.size
+    assert_equal "42", kept["criteria[filters][guardian_id]"]
+    refute kept.key?("criteria[filters][email]")
+  end
+
+  def test_public_column_header_sorts_through_a_get_link_and_click_inverts
+    # arrange
+    classify_and_reveal
+    insert_student(guardian_id: 5)
+    insert_student(guardian_id: 9)
+
+    # act
+    get LIST, headers: as(1)
+    asc_href = dom.css("thead th a").find { |a| a.text.include?("guardian_id") }["href"]
+    get asc_href, headers: as(1)
+    ascending = dom.css("tbody tr td:nth-child(2)").map { |td| td.text.strip }
+    desc_href = dom.css("thead th a").find { |a| a.text.include?("guardian_id") }["href"]
+    get desc_href, headers: as(1)
+    descending = dom.css("tbody tr td:nth-child(2)").map { |td| td.text.strip }
+
+    # assert
+    assert_includes asc_href, "sort=guardian_id"
+    assert_includes asc_href, "dir=asc"
+    assert_includes desc_href, "dir=desc"
+    assert_equal %w[5 9], ascending
+    assert_equal %w[9 5], descending
+  end
+
+  def test_masked_column_header_has_no_sort_control
+    # arrange
+    classify_and_reveal(reveal: false)
+    insert_student
+
+    # act
+    get LIST, headers: as(1)
+    header = dom.css("thead th").find { |th| th.text.include?("cpf") }
+
+    # assert
+    assert_empty header.css("a")
+    assert_empty header.css("button")
+  end
+
+  def test_revealed_column_header_sorts_through_a_post_button
+    # arrange
+    classify_and_reveal
+    insert_student(name: "Bruno")
+    insert_student(name: "Ana", email: "a@x.test")
+
+    # act
+    get LIST, headers: as(1)
+    button = dom.css("thead th button").find { |b| b.text.include?("name") }
+    first_value = button["value"]
+    run_query(sort_toggle: first_value)
+    ascending = names
+    button = dom.css("thead th button").find { |b| b.text.include?("name") }
+    run_query(sort_toggle: button["value"])
+    descending = names
+
+    # assert
+    assert_equal "name:asc", first_value
+    assert_equal %w[Ana Bruno], ascending
+    assert_equal %w[Bruno Ana], descending
+  end
+
+  def test_url_sort_on_a_masked_column_is_ignored_with_a_warning
+    # arrange
+    classify_and_reveal(reveal: false)
+    insert_student
+
+    # act
+    get LIST, params: { sort: "cpf", dir: "desc" }, headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_includes dom.at_css(".lb-flash-warn").text, "cpf"
+  end
+
+  def test_token_from_another_table_is_ignored
+    # arrange
+    classify_and_reveal
+    insert_student(name: "Zeferino Distinto")
+    insert_student(name: "Outra Pessoa", email: "outra@x.test", cpf: "000")
+    post QUERY, params: { criteria: { search: "Zeferino" } }, headers: as(1)
+    token = Rack::Utils.parse_query(URI(response.location).query)["q"]
+
+    # act
+    get "/backoffice/data/guardians", params: { q: token }, headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_empty dom.css(".lb-flash-warn")
+    refute_includes dom.at_css("input[type=search]")["value"].to_s, "Zeferino"
+  end
+
+  def test_token_from_another_tenant_is_ignored
+    # arrange
+    create_tenant_schemas
+    path = write_yaml("students:\n  name: contact\n")
+    configure_panel(permissions: { 1 => %i[browse reveal view_tenant] }, tenancy: FakeTenancy.new) { |config| config.classification_path = path }
+    Lucid::Backoffice::Reveal.grant(operator: PanelOperator.new(1), category: "contact", reason: "investigar chamado 123", tenant: "alfa")
+    Lucid::Backoffice::Reveal.grant(operator: PanelOperator.new(1), category: "contact", reason: "investigar chamado 123", tenant: "beta")
+    post "/backoffice/tenants/alfa/data/students/query", params: { criteria: { search: "Zeferino" } }, headers: as(1)
+    token = Rack::Utils.parse_query(URI(response.location).query)["q"]
+
+    # act
+    get "/backoffice/tenants/beta/data/students", params: { q: token }, headers: as(1)
+    foreign = dom.at_css("input[type=search]")["value"].to_s
+    get "/backoffice/tenants/alfa/data/students", params: { q: token }, headers: as(1)
+    own = dom.at_css("input[type=search]")["value"].to_s
+
+    # assert
+    assert_equal "", foreign
+    assert_equal "Zeferino", own
+  end
+
+  def test_unknown_token_is_ignored
+    # arrange
+    classify_and_reveal
+    insert_student
+
+    # act
+    get LIST, params: { q: "inexistente" }, headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_equal 1, dom.css("tbody tr").size
+  end
+
+  def test_only_the_last_twenty_queries_are_kept
+    # arrange
+    classify_and_reveal
+    insert_student(name: "Zeferino Distinto")
+    tokens = []
+
+    # act
+    22.times do |index|
+      post QUERY, params: { criteria: { search: index.zero? ? "Zeferino" : "x#{index}" } }, headers: as(1)
+      tokens << Rack::Utils.parse_query(URI(response.location).query)["q"]
+    end
+    get LIST, params: { q: tokens.first }, headers: as(1)
+    oldest = dom.at_css("input[type=search]")["value"].to_s
+    get LIST, params: { q: tokens.last }, headers: as(1)
+    newest = dom.at_css("input[type=search]")["value"].to_s
+
+    # assert
+    assert_equal "", oldest
+    assert_equal "x21", newest
+  end
+
+  def test_query_in_a_tenant_redirects_to_the_tenant_list
+    # arrange
+    create_tenant_schemas
+    configure_panel(permissions: { 1 => %i[browse view_tenant] }, tenancy: FakeTenancy.new)
+
+    # act
+    post "/backoffice/tenants/alfa/data/students/query", params: { criteria: { search: "x" } }, headers: as(1)
+
+    # assert
+    assert_match(%r{\A/backoffice/tenants/alfa/data/students\?q=[\w-]+\z}, URI(response.location).request_uri)
+  end
 end

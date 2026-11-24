@@ -136,4 +136,51 @@ class PanelActivityTest < DataTest
     assert_equal 1, events("backoffice.browse").size
     refute_empty statements.grep(/FROM "?public"?\."?students"?/i)
   end
+
+  def test_browse_records_only_the_column_names_as_criteria
+    # arrange
+    configure_minimal
+    insert_student(email: "zef@secreto-exemplo.test")
+
+    # act
+    PanelActivity.browse(table: "students", criteria: %w[status email status])
+
+    # assert
+    event = events("backoffice.browse").sole
+    assert_equal({ "criteria" => %w[email status] }, event.payload)
+    refute_match(/zef@secreto/, event.attributes.values.join(" "))
+  end
+
+  def test_browse_drops_criteria_that_are_not_column_names
+    # arrange
+    configure_minimal
+
+    # act
+    PanelActivity.browse(table: "students", criteria: ["status", "zef@secreto-exemplo.test", "Zeferino Distinto", "a b", ""])
+
+    # assert
+    assert_equal({ "criteria" => ["status"] }, events("backoffice.browse").sole.payload)
+  end
+
+  def test_browse_without_criteria_has_an_empty_payload
+    # arrange
+    configure_minimal
+
+    # act
+    PanelActivity.browse(table: "students", criteria: [])
+
+    # assert
+    assert_equal({}, events("backoffice.browse").sole.payload)
+  end
+
+  def test_event_accepts_an_array_of_tokens_and_rejects_values
+    # arrange
+    event = Lucid::Backoffice::Activity::Event
+
+    # act
+    results = [%w[status email], [1, 2], ["Zeferino Distinto"], ["status", 1], ["a@b.test"], "status", "a b"].map { |value| event.identifier?(value) }
+
+    # assert
+    assert_equal [true, true, false, false, false, true, false], results
+  end
 end

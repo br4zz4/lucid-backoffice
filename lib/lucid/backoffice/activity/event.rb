@@ -21,7 +21,7 @@ module Lucid
         def self.identifier?(value)
           case value
           when nil, true, false, Integer then true
-          when Array then value.all?(Integer)
+          when Array then value.all?(Integer) || value.all? { |item| item.is_a?(String) && item.match?(TOKEN) }
           when String then value.match?(TOKEN)
           else false
           end

@@ -44,6 +44,11 @@ pt-BR:
     extra_table: "Tabela extra %{table}"
     pending_version: "Migration pendente %{version}"
     ignored_filters: "Filtros ignorados: %{filters}"
+    search: Buscar
+    add_filter: "+ Filtro"
+    remove_filter: "Remover filtro %{name}"
+    filter_column: Coluna
+    filter_value: Valor
     reveal_title: Revelar dados
     reason: Motivo
     revealed: Dados revelados

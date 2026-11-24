@@ -14,10 +14,12 @@ Lucid::Backoffice::Engine.routes.draw do
     get "activity", to: "activity_events#index", as: :tenant_activity
     get "data", to: "records#tables", as: :tenant_data
     get "data/:table", to: "records#index", as: :tenant_table
+    post "data/:table/query", to: "records#query", as: :tenant_table_query
     get "data/:table/:id", to: "records#show", as: :tenant_record
   end
 
   get "data", to: "records#tables", as: :data
   get "data/:table", to: "records#index", as: :table
+  post "data/:table/query", to: "records#query", as: :table_query
   get "data/:table/:id", to: "records#show", as: :record
 end

@@ -92,6 +92,10 @@
 .lb-table th { color: var(--lb-muted); font-family: var(--lb-font-mono); font-size: .7rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; background: var(--lb-raised); }
 .lb-locked { color: var(--lb-muted); letter-spacing: .12em; cursor: not-allowed; }
 .lb-locked-note { color: var(--lb-muted); display: block; }
+.lb-query { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 1rem 0; }
+.lb-query-form { display: flex; gap: .5rem; }
+.lb-chip { display: inline-flex; gap: .25rem; align-items: center; padding: .15rem .5rem; border: 1px solid var(--lb-border, #333); border-radius: 999px; }
+.lb-chip-remove, .lb-sort { background: none; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0; }
 .lb-masked { color: var(--lb-muted); letter-spacing: .12em; font-family: var(--lb-font-mono); }
 .lb-grouped td:first-child { border-left: 2px solid var(--lb-accent); }
 
