@@ -10,17 +10,21 @@ module Lucid
 
       module_function
 
-      # @param filters [Hash] only +id+ and +*_id+ with an integer value are applied; the rest is ignored
+      # @param filters [Hash] equality filters, applied only to usable columns; the rest is ignored
+      # @param query [Query, nil] filters, search and sort together; +filters+ are merged into it
       # @param revealed [#include?] categories the operator revealed
       # @raise [NotFound] +table+ is not in the catalog of +schema+
-      def list(schema:, table:, filters: {}, page: 1, revealed: [], resource: nil)
+      def list(schema:, table:, filters: {}, query: nil, page: 1, revealed: [], resource: nil)
         columns = visible(schema, table, resource)
-        applied, ignored = split_filters(filters, columns)
+        query = Query.new(filters: filters.to_h.merge(query&.filters.to_h), search: query&.search, sort: query&.sort, dir: query&.dir)
+        ignored = query.ignored(columns, revealed)
+        conditions = conditions_for(query, columns, revealed, resource)
         per = Lucid::Backoffice.configuration.page_size
-        total = connection.select_value("SELECT COUNT(*) FROM #{qualified(schema, table)}#{where(applied)}").to_i
+        total = connection.select_value("SELECT COUNT(*) FROM #{qualified(schema, table)}#{where(conditions)}").to_i
         page = [page.to_i, 1].max
         rows = connection.select_all(
-          "SELECT #{select_list(columns)} FROM #{qualified(schema, table)}#{where(applied)}#{order(columns)} LIMIT #{per} OFFSET #{(page - 1) * per}"
+          "SELECT #{select_list(columns)} FROM #{qualified(schema, table)}#{where(conditions)}#{order(columns, query, revealed)} " \
+          "LIMIT #{per} OFFSET #{(page - 1) * per}"
         ).to_a
         Page.new(columns: columns, rows: rows.map { |row| cells(row, columns, revealed) }, page: page,
                  pages: [(total / per.to_f).ceil, 1].max, total: total, ignored_filters: ignored)
@@ -44,19 +48,32 @@ module Lucid
         resource ? resource.visible_columns(columns) : columns
       end
 
-      def split_filters(filters, columns)
-        allowed = columns.select { |column| column.name == "id" || column.name.end_with?("_id") }.map(&:name)
-        applied = {}
-        ignored = []
-        filters.to_h.each do |name, value|
-          integer = Integer(value.to_s, exception: false)
-          if allowed.include?(name.to_s) && integer
-            applied[name.to_s] = integer
-          else
-            ignored << name.to_s
-          end
+      def conditions_for(query, columns, revealed, resource)
+        conditions = query.filters.filter_map do |name, value|
+          column = columns.find { |candidate| candidate.name == name }
+          next unless column && query.applicable_filter?(name, columns, revealed)
+
+          equality(column, value)
         end
-        [applied, ignored]
+        conditions << search_condition(query, columns, revealed, resource)
+        conditions.compact
+      end
+
+      def equality(column, value)
+        quoted = connection.quote_column_name(column.name)
+        return "#{quoted} = #{Integer(value.to_s)}" if column.type == :integer
+
+        "CAST(#{quoted} AS text) = #{connection.quote(value.to_s)}"
+      end
+
+      def search_condition(query, columns, revealed, resource)
+        return nil unless query.search
+
+        searchable = query.searchable_columns(columns, revealed, declared: resource&.searchable.presence)
+        return "FALSE" if searchable.empty?
+
+        pattern = connection.quote("%#{ActiveRecord::Base.sanitize_sql_like(query.search)}%")
+        "(" + searchable.map { |column| "CAST(#{connection.quote_column_name(column.name)} AS text) ILIKE #{pattern}" }.join(" OR ") + ")"
       end
 
       def cells(row, columns, revealed)
@@ -75,14 +92,15 @@ module Lucid
         columns.map { |column| connection.quote_column_name(column.name) }.join(", ")
       end
 
-      def where(applied)
-        return "" if applied.empty?
-
-        " WHERE " + applied.map { |name, value| "#{connection.quote_column_name(name)} = #{value}" }.join(" AND ")
+      def where(conditions)
+        conditions.empty? ? "" : " WHERE #{conditions.join(' AND ')}"
       end
 
-      def order(columns)
-        columns.any? { |column| column.name == "id" } ? " ORDER BY #{connection.quote_column_name('id')}" : ""
+      def order(columns, query, revealed)
+        terms = []
+        terms << "#{connection.quote_column_name(query.sort)} #{query.dir.upcase}" if query.sortable?(columns, revealed)
+        terms << "#{connection.quote_column_name('id')} ASC" if columns.any? { |column| column.name == "id" } && query.sort != "id"
+        terms.empty? ? "" : " ORDER BY #{terms.join(', ')}"
       end
 
       def connection

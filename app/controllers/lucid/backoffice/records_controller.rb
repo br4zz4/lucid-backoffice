@@ -11,7 +11,8 @@ module Lucid
       def index
         authorize!(:browse, { tenant: current_tenant, table: params[:table], model: model })
         PanelActivity.browse(table: params[:table], tenant: current_tenant)
-        @page = Records.list(schema: @schema, table: params[:table], filters: params.fetch(:filter, {}).to_unsafe_h, page: params[:page],
+        query = Records::Query.new(filters: params.fetch(:filter, {}).to_unsafe_h)
+        @page = Records.list(schema: @schema, table: params[:table], query: query, page: params[:page],
                              revealed: revealed, resource: resource)
       end
 

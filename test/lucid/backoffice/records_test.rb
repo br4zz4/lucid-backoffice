@@ -357,4 +357,285 @@ class RecordsTest < DataTest
     assert_equal %w[name id], page.columns.map(&:name)
     assert_equal 2, page.rows.first.size
   end
+
+  def ids(page) = page.rows.map { |row| cell(row, "id").value }
+
+  def query(**options) = Records::Query.new(**options)
+
+  def test_filter_by_a_public_text_column_returns_only_matching_rows
+    # arrange
+    write_classification("students:\n  status: public\n")
+    insert_student(status: "teacher")
+    insert_student(status: "director")
+    insert_student(status: "teacher")
+
+    # act
+    page = list(query: query(filters: { "status" => "teacher" }))
+
+    # assert
+    assert_equal 2, page.total
+    assert_equal %w[teacher teacher], page.rows.map { |row| cell(row, "status").value }
+    assert_empty page.ignored_filters
+  end
+
+  def test_filter_by_a_masked_column_is_ignored_and_not_used_in_sql
+    # arrange
+    configure_minimal
+    insert_student(email: "a@x.test")
+    insert_student(email: "b@x.test")
+
+    # act
+    statements = capture_sql { @page = list(query: query(filters: { "email" => "a@x.test" })) }
+
+    # assert
+    assert_equal 2, @page.total
+    assert_equal %w[email], @page.ignored_filters
+    assert_empty statements.grep_v(/information_schema/).grep(/a@x\.test|WHERE/i)
+  end
+
+  def test_filter_by_a_revealed_column_applies
+    # arrange
+    write_classification("students:\n  email: contact\n")
+    insert_student(email: "a@x.test")
+    insert_student(email: "b@x.test")
+
+    # act
+    page = list(query: query(filters: { "email" => "a@x.test" }), revealed: ["contact"])
+
+    # assert
+    assert_equal 1, page.total
+    assert_empty page.ignored_filters
+  end
+
+  def test_search_is_case_insensitive_over_revealed_columns
+    # arrange
+    write_classification("students:\n  name: contact\n  email: contact\n")
+    insert_student(name: "Maria Silva", email: "x@x.test")
+    insert_student(name: "Joao", email: "MARIA@x.test")
+    insert_student(name: "Pedro", email: "p@x.test")
+
+    # act
+    page = list(query: query(search: "maria"), revealed: ["contact"])
+
+    # assert
+    assert_equal 2, page.total
+    assert_equal [1, 2], ids(page)
+  end
+
+  def test_search_does_not_cover_masked_columns_that_were_not_revealed
+    # arrange
+    write_classification("students:\n  name: contact\n  email: documents\n")
+    insert_student(name: "Maria", email: "zed@x.test")
+    insert_student(name: "Joao", email: "maria@x.test")
+
+    # act
+    page = list(query: query(search: "maria"), revealed: ["contact"])
+    nothing = list(query: query(search: "zed"), revealed: ["contact"])
+
+    # assert
+    assert_equal [1], ids(page)
+    assert_equal 0, nothing.total
+  end
+
+  def test_search_without_any_usable_column_matches_nothing
+    # arrange
+    configure_minimal
+    insert_student(name: "Maria")
+
+    # act
+    page = list(query: query(search: "maria"))
+
+    # assert
+    assert_equal 0, page.total
+    assert_empty page.rows
+  end
+
+  def test_search_treats_like_wildcards_literally
+    # arrange
+    write_classification("students:\n  name: contact\n")
+    insert_student(name: "100% real")
+    insert_student(name: "1000 real")
+    insert_student(name: "a_b")
+    insert_student(name: "axb")
+
+    # act
+    percent = list(query: query(search: "100%"), revealed: ["contact"])
+    underscore = list(query: query(search: "a_b"), revealed: ["contact"])
+
+    # assert
+    assert_equal [1], ids(percent)
+    assert_equal [3], ids(underscore)
+  end
+
+  def test_search_with_a_resource_covers_only_its_declared_columns
+    # arrange
+    write_classification("students:\n  name: contact\n  email: contact\n")
+    insert_student(name: "Maria", email: "x@x.test")
+    insert_student(name: "Joao", email: "maria@x.test")
+    resource = Class.new(Lucid::Backoffice::Resource) do
+      table :students
+      search :email
+    end
+
+    # act
+    page = list(query: query(search: "maria"), revealed: ["contact"], resource: resource)
+
+    # assert
+    assert_equal [2], ids(page)
+  end
+
+  def test_search_never_uses_hidden_columns
+    # arrange
+    configure_minimal
+    insert_student
+    connection.execute("UPDATE public.students SET password_digest = 'zzz', api_token = 'zzz'")
+
+    # act
+    page = list(query: query(search: "zzz"), revealed: Lucid::Backoffice.configuration.categories)
+
+    # assert
+    assert_equal 0, page.total
+  end
+
+  def test_search_and_filter_combine
+    # arrange
+    write_classification("students:\n  name: contact\n  status: public\n")
+    insert_student(name: "Maria", status: "teacher")
+    insert_student(name: "Maria", status: "director")
+
+    # act
+    page = list(query: query(search: "maria", filters: { "status" => "director" }), revealed: ["contact"])
+
+    # assert
+    assert_equal [2], ids(page)
+  end
+
+  def test_sort_by_a_visible_column_orders_ascending_and_descending
+    # arrange
+    write_classification("students:\n  status: public\n")
+    insert_student(status: "b")
+    insert_student(status: "c")
+    insert_student(status: "a")
+
+    # act
+    asc = list(query: query(sort: "status", dir: "asc"))
+    desc = list(query: query(sort: "status", dir: "desc"))
+
+    # assert
+    assert_equal [3, 1, 2], ids(asc)
+    assert_equal [2, 1, 3], ids(desc)
+    assert_empty asc.ignored_filters
+  end
+
+  def test_sort_by_a_revealed_column_applies
+    # arrange
+    write_classification("students:\n  name: contact\n")
+    insert_student(name: "b")
+    insert_student(name: "a")
+
+    # act
+    page = list(query: query(sort: "name"), revealed: ["contact"])
+
+    # assert
+    assert_equal [2, 1], ids(page)
+  end
+
+  def test_sort_by_a_masked_column_is_ignored_and_reported
+    # arrange
+    configure_minimal
+    insert_student(name: "b")
+    insert_student(name: "a")
+
+    # act
+    statements = capture_sql { @page = list(query: query(sort: "name", dir: "desc")) }
+
+    # assert
+    assert_equal [1, 2], ids(@page)
+    assert_equal %w[name], @page.ignored_filters
+    assert_empty statements.grep(/ORDER BY.*"name"/)
+  end
+
+  def test_sort_by_an_unknown_or_hidden_column_is_ignored
+    # arrange
+    configure_minimal
+    insert_student
+
+    # act
+    unknown = list(query: query(sort: "ghost"))
+    hidden = list(query: query(sort: "password_digest"))
+
+    # assert
+    assert_equal %w[ghost], unknown.ignored_filters
+    assert_equal %w[password_digest], hidden.ignored_filters
+  end
+
+  def test_sort_direction_defaults_to_ascending_when_invalid
+    # arrange
+    write_classification("students:\n  status: public\n")
+    insert_student(status: "b")
+    insert_student(status: "a")
+
+    # act
+    page = list(query: query(sort: "status", dir: "sideways; DROP TABLE students"))
+
+    # assert
+    assert_equal [2, 1], ids(page)
+  end
+
+  def test_sort_breaks_ties_by_id
+    # arrange
+    write_classification("students:\n  status: public\n")
+    3.times { insert_student(status: "same") }
+
+    # act
+    page = list(query: query(sort: "status", dir: "desc"))
+
+    # assert
+    assert_equal [1, 2, 3], ids(page)
+  end
+
+  def test_no_sql_names_a_hidden_or_unrevealed_masked_column_in_where_or_order_by
+    # arrange
+    write_classification("students:\n  status: public\n  email: contact\n")
+    insert_student
+    criteria = query(filters: { "password_digest" => "x", "api_token" => "x", "cpf" => "1", "email" => "m", "status" => "active" },
+                     search: "maria", sort: "cpf")
+
+    # act
+    statements = capture_sql { list(query: criteria) }.reject { |sql| sql.match?(/information_schema/) }
+    clauses = statements.flat_map { |sql| sql.scan(/\b(?:WHERE|ORDER BY)\b.*?(?=\bLIMIT\b|\z)/mi) }
+
+    # assert
+    refute_empty clauses
+    assert_empty clauses.grep(SECRET_PATTERN)
+    assert_empty clauses.grep(/"(cpf|name|email|notes)"/)
+  end
+
+  def test_no_sql_names_a_hidden_column_even_when_everything_is_revealed
+    # arrange
+    configure_minimal
+    insert_student
+    criteria = query(filters: { "password_digest" => "x", "otp_secret" => "x" }, search: "maria", sort: "encrypted_phone")
+
+    # act
+    statements = capture_sql { list(query: criteria, revealed: Lucid::Backoffice.configuration.categories) }
+    clauses = statements.flat_map { |sql| sql.scan(/\b(?:WHERE|ORDER BY)\b.*?(?=\bLIMIT\b|\z)/mi) }
+
+    # assert
+    assert_empty clauses.grep(SECRET_PATTERN)
+  end
+
+  def test_filters_argument_and_query_filters_are_merged
+    # arrange
+    write_classification("students:\n  status: public\n")
+    insert_student(guardian_id: 1, status: "a")
+    insert_student(guardian_id: 2, status: "a")
+    insert_student(guardian_id: 2, status: "b")
+
+    # act
+    page = list(filters: { "guardian_id" => "2" }, query: query(filters: { "status" => "a" }))
+
+    # assert
+    assert_equal [2], ids(page)
+  end
 end

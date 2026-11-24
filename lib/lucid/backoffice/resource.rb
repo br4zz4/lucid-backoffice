@@ -64,14 +64,14 @@ module Lucid
           @display ||= {}
         end
 
-        # Columns the operator may search by id: only public columns, because searching a masked column
-        # would leak its value by trial and error.
+        # Columns the text search covers. A hidden column can never be searched; a masked one is searched
+        # only while the operator has revealed its category.
         def search(*names)
           names.each do |name|
-            category = Classification.category_for(table, name)
-            unless category == Classification::PUBLIC
-              raise Error::ConfigurationConflict, "#{self.name}: search #{name.inspect} is #{category}; only public columns can be searched"
-            end
+            next unless hidden.include?(name.to_s) || name.to_s.match?(Lucid::Backoffice.configuration.secret_columns) ||
+                        Classification.category_for(table, name) == "secret"
+
+            raise Error::ConfigurationConflict, "#{self.name}: search #{name.inspect} is a hidden column and cannot be searched"
           end
           @search = names.map(&:to_s)
         end
