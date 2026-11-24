@@ -73,6 +73,10 @@ class ActionsIntegrationTest < PanelTest
   def snapshot_value = dom.at_css("input[name=snapshot]")&.[]("value")
   def alert_text = dom.at_css(".lb-flash-error")&.text.to_s
   def preview_section = dom.at_css("section.lb-section")
+  def disabled_action = dom.at_css(".lb-action span.lb-button[aria-disabled=true]")
+  def disabled_pair = [disabled_action.text.strip, disabled_action.parent.at_css("small").text.strip]
+  def direct_buttons = dom.css(".lb-actions a.lb-button").reject { |node| node.ancestors("details").any? }
+  def menu_items = dom.css("details.lb-menu .lb-menu-list > *")
   def execute_button = dom.at_css("input[type=submit][data-lb-submit]")
 
   def open_preview(key, params, operator: 1)
@@ -706,8 +710,7 @@ class ActionsIntegrationTest < PanelTest
     get "/backoffice/data/accounts/#{account.id}", headers: as(1)
 
     # assert
-    disabled = dom.at_css("span[aria-disabled=true]")
-    assert_equal ["Corrigir papel", "Escola ficaria sem owner"], [disabled.text.strip, disabled["title"]]
+    assert_equal ["Corrigir papel", "Escola ficaria sem owner"], disabled_pair
     assert_includes response.body, "Escola ficaria sem owner"
     assert_nil dom.at_css("a[href*='/actions/change_user_role/new']")
   end
@@ -757,8 +760,7 @@ class ActionsIntegrationTest < PanelTest
     get "/backoffice/tenants/alfa", headers: as(1)
 
     # assert
-    disabled = dom.at_css("span[aria-disabled=true]")
-    assert_equal ["Reconstruir índice", "Fora do ar"], [disabled.text.strip, disabled["title"]]
+    assert_equal ["Reconstruir índice", "Fora do ar"], disabled_pair
     assert_nil dom.at_css("a[href*='/actions/rebuild_index/new']")
   end
 
@@ -787,9 +789,186 @@ class ActionsIntegrationTest < PanelTest
     get "/backoffice", headers: as(1)
 
     # assert
-    disabled = dom.at_css("span[aria-disabled=true]")
-    assert_equal ["Limpar cache", "Em manutenção"], [disabled.text.strip, disabled["title"]]
+    assert_equal ["Limpar cache", "Em manutenção"], disabled_pair
     assert_nil dom.at_css("a[href*='/actions/purge_cache/new']")
+  end
+
+  def define_record_actions(count, unavailable: false)
+    count.times do |index|
+      define_action("RecordAction#{index}") do
+        on :accounts
+        label "Ação #{index}"
+        unavailable "Motivo #{index}", if: -> { true } if unavailable
+        perform { nil }
+      end
+    end
+  end
+
+  def test_record_actions_render_as_buttons_in_the_page_header
+    # arrange
+    configure_actions
+    role_action
+    account = create_account
+
+    # act
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+    button = dom.at_css(".lb-page-head .lb-page-actions .lb-actions .lb-action a.lb-button")
+
+    # assert
+    assert_equal "Corrigir papel", button.text.strip
+    assert_includes button["href"], "/actions/change_user_role/new"
+    assert_includes button["href"], "record_id=#{account.id}"
+  end
+
+  def test_actions_have_no_section_or_heading_of_their_own
+    # arrange
+    configure_actions
+    role_action
+    account = create_account
+
+    # act
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+
+    # assert
+    assert_empty dom.css("h2").select { |heading| heading.text.strip == I18n.t("lucid_backoffice.actions") }
+    assert_empty dom.css("section.lb-section")
+  end
+
+  def test_unavailable_action_is_a_disabled_span_with_the_reason_below
+    # arrange
+    configure_actions
+    role_action { unavailable "Escola ficaria sem owner", if: -> { record.last_owner? } }
+    account = create_account(role: "owner")
+
+    # act
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+
+    # assert
+    assert_equal "span", disabled_action.name
+    assert_nil disabled_action["href"]
+    assert_includes disabled_action["class"].split, "lb-button"
+    assert_equal ["Corrigir papel", "Escola ficaria sem owner"], disabled_pair
+    assert_empty dom.css(".lb-action a[href*='/actions/change_user_role']")
+  end
+
+  def test_high_danger_action_gets_the_danger_button_class
+    # arrange
+    configure_actions
+    role_action { danger :high }
+    account = create_account
+
+    # act
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+
+    # assert
+    assert_includes dom.at_css("a.lb-button[href*='change_user_role']")["class"].split, "lb-button-danger"
+  end
+
+  def test_normal_danger_action_has_no_danger_class
+    # arrange
+    configure_actions
+    role_action
+    account = create_account
+
+    # act
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+
+    # assert
+    refute_includes dom.at_css("a.lb-button[href*='change_user_role']")["class"].split, "lb-button-danger"
+  end
+
+  def test_up_to_three_actions_are_all_direct_buttons
+    # arrange
+    configure_actions
+    define_record_actions(3)
+    account = create_account
+
+    # act
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+
+    # assert
+    assert_equal ["Ação 0", "Ação 1", "Ação 2"], direct_buttons.map { |node| node.text.strip }.sort
+    assert_empty dom.css("details.lb-menu")
+  end
+
+  def test_more_than_three_actions_keep_the_first_as_a_button_and_fold_the_rest_into_a_menu
+    # arrange
+    configure_actions
+    define_record_actions(4)
+    account = create_account
+
+    # act
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+    menu = dom.at_css("details.lb-menu")
+    labels = (direct_buttons + menu.css(".lb-menu-list a")).map { |node| node.text.strip }
+
+    # assert
+    assert_equal 1, direct_buttons.size
+    assert_equal I18n.t("lucid_backoffice.more_actions"), menu.at_css("summary").text.strip
+    assert_equal 3, menu.css(".lb-menu-list a").size
+    assert_equal ["Ação 0", "Ação 1", "Ação 2", "Ação 3"], labels.sort
+    assert menu.css(".lb-menu-list a").all? { |link| link["href"].include?("/actions/") }
+  end
+
+  def test_hidden_actions_do_not_count_toward_the_menu_threshold
+    # arrange
+    configure_actions
+    define_record_actions(3)
+    define_action("Hidden") { on :accounts; label "Oculta"; only_if { false }; perform { nil } }
+    account = create_account
+
+    # act
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+
+    # assert
+    assert_empty dom.css("details.lb-menu")
+    assert_equal 3, direct_buttons.size
+  end
+
+  def test_unavailable_actions_in_the_menu_stay_disabled_with_their_reason
+    # arrange
+    configure_actions
+    define_record_actions(4, unavailable: true)
+    account = create_account
+
+    # act
+    get "/backoffice/data/accounts/#{account.id}", headers: as(1)
+    menu = dom.at_css("details.lb-menu")
+    items = menu.css(".lb-menu-list [aria-disabled=true]")
+
+    # assert
+    assert_equal 1, dom.css(".lb-actions span.lb-button[aria-disabled=true]").reject { |node| node.ancestors("details").any? }.size
+    assert_equal 3, items.size
+    assert items.all? { |item| item.name != "a" && item["href"].nil? }
+    assert_equal 3, menu.css("small").size
+    assert_empty dom.css("a[href*='/actions/']")
+  end
+
+  def test_tenant_actions_render_in_the_tenant_page_header
+    # arrange
+    configure_actions(tenancy: ActionTenancy.new)
+    define_action("RebuildIndex") { on :tenant; label "Reconstruir índice"; perform { nil } }
+
+    # act
+    get "/backoffice/tenants/alfa", headers: as(1)
+
+    # assert
+    assert_equal "Reconstruir índice", dom.at_css(".lb-page-head .lb-page-actions a.lb-button").text.strip
+    assert_empty dom.css("h2").select { |heading| heading.text.strip == I18n.t("lucid_backoffice.actions") }
+  end
+
+  def test_dashboard_still_renders_global_actions_as_buttons_without_a_section
+    # arrange
+    configure_actions
+    define_action("PurgeCache") { on :global; label "Limpar cache"; perform { nil } }
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_equal "Limpar cache", dom.at_css(".lb-actions .lb-action a.lb-button").text.strip
+    assert_empty dom.css("h2").select { |heading| heading.text.strip == I18n.t("lucid_backoffice.actions") }
   end
 
   def create_lesson_tables
@@ -816,8 +995,7 @@ class ActionsIntegrationTest < PanelTest
 
     # assert
     assert_response :ok
-    disabled = dom.at_css("span[aria-disabled=true]")
-    assert_equal ["Encerrar aluno", "Existem salas abertas"], [disabled.text.strip, disabled["title"]]
+    assert_equal ["Encerrar aluno", "Existem salas abertas"], disabled_pair
     refute_equal "alfa", connection.select_value("SELECT current_schema()")
   end
 
@@ -859,8 +1037,7 @@ class ActionsIntegrationTest < PanelTest
 
     # assert
     assert_response :ok
-    disabled = dom.at_css("span[aria-disabled=true]")
-    assert_equal ["Limpar cache", "Em manutenção"], [disabled.text.strip, disabled["title"]]
+    assert_equal ["Limpar cache", "Em manutenção"], disabled_pair
     assert_equal ["public"], seen.uniq
   end
 
