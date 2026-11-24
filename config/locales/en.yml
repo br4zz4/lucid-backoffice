@@ -1,5 +1,12 @@
 en:
   lucid_backoffice:
+    masked_data: Masked data
+    reveal_title_in: "Reveal data of %{context}"
+    reveal_all: "Reveal for %{minutes} min"
+    reveal_explainer: "Shows in clear, for %{minutes} minutes, every category you may reveal here. The reason is recorded in the activity trail."
+    revealed_until: "Revealed until %{time}"
+    end_reveal_all: End
+    cancel: Cancel
     shared: Shared
     context: Context
     menu: Menu
