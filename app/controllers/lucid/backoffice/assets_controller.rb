@@ -5,6 +5,7 @@ module Lucid
     class AssetsController < ActionController::Base
       TYPES = { "css" => "text/css", "js" => "text/javascript" }.freeze
 
+      skip_forgery_protection
       before_action :harden_headers
 
       def show

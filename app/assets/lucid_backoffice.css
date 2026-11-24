@@ -172,8 +172,29 @@
 .lb-pager-range { margin: .8rem 0 0; color: var(--lb-muted); font-size: .82rem; }
 .lb-list .lb-enter { margin-left: .6rem; padding: .2rem .8rem; font-size: .78rem; }
 
+.lb .lb-sidebar a.lb-brand { color: var(--lb-text); }
+.lb .lb-sidebar .lb-nav-main a, .lb .lb-sidebar .lb-nav-data a { display: flex; align-items: center; gap: .5rem; margin: 0 0 .15rem; padding: .5rem .75rem; border: 1px solid transparent; border-radius: 10px; color: var(--lb-muted); font-weight: 500; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb .lb-sidebar .lb-nav-main a:hover, .lb .lb-sidebar .lb-nav-data a:hover { color: var(--lb-text); background: rgb(255 255 255 / .05); border-color: var(--lb-border); }
+.lb .lb-sidebar a[aria-current="page"] { color: var(--lb-text); background: var(--lb-raised); border-color: var(--lb-border); box-shadow: inset 2px 0 0 var(--lb-accent); }
+.lb .lb-context-leave, .lb .lb-context-switch summary { display: inline-block; padding: .3rem .7rem; border: 1px solid var(--lb-border); border-radius: 999px; color: var(--lb-text); font-size: .78rem; text-decoration: none; }
+.lb .lb-context-leave:hover, .lb .lb-context-switch summary:hover { border-color: rgb(255 255 255 / .3); }
+.lb-crumbs { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+.lb .lb-crumbs a { color: var(--lb-muted); text-decoration: none; }
+.lb .lb-crumbs a:hover { color: var(--lb-text); }
+.lb .lb-crumbs b { overflow: hidden; text-overflow: ellipsis; color: var(--lb-text); }
+.lb-crumb-sep { color: var(--lb-muted); opacity: .5; }
+.lb-eye-pop { position: relative; }
+.lb-eye-pop > summary { list-style: none; }
+.lb-eye-pop > summary::-webkit-details-marker { display: none; }
+.lb-eye-pop[open] > .lb-reveal-dialog { display: block; }
+.lb-eye-pop > .lb-reveal-dialog { display: none; position: fixed; top: 4rem; left: 50%; transform: translateX(-50%); z-index: 60; }
+.lb-eye-pop[open]::before { content: ""; position: fixed; inset: 3.4rem 0 0 0; z-index: 59; background: rgb(0 0 0 / .65); }
+
 @media (max-width: 40rem) {
   .lb-topbar { margin-left: 0; padding: .6rem 1rem; gap: .6rem; }
+  .lb .lb-crumbs a, .lb-crumb-sep, .lb-eye-label, .lb-eye-end { display: none; }
+  .lb-crumbs { min-width: 0; }
+  .lb-eye { padding: .5rem; }
   .lb-main { margin-left: 0; padding: 1.25rem 1rem 3rem; }
   .lb-sidebar-toggle > summary { display: inline-block; }
   .lb-sidebar-toggle::details-content { content-visibility: hidden; display: block; }
