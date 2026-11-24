@@ -8,6 +8,13 @@ pt-BR:
       default: "%d/%m/%Y %H:%M"
       short: "%d/%m %H:%M"
   lucid_backoffice:
+    masked_data: Dados mascarados
+    reveal_title_in: "Revelar dados de %{context}"
+    reveal_all: "Revelar por %{minutes} min"
+    reveal_explainer: "Mostra em claro, por %{minutes} minutos, todas as categorias que você pode revelar aqui. O motivo fica registrado na atividade."
+    revealed_until: "Revelado até %{time}"
+    end_reveal_all: Encerrar
+    cancel: Cancelar
     shared: Compartilhado
     context: Contexto
     menu: Menu

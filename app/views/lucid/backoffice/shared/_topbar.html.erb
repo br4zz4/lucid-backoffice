@@ -7,6 +7,7 @@
     <% if content_for?(:lb_crumbs) %><%= yield :lb_crumbs %><% else %><b><%= context_label %></b><% end %>
   </nav>
   <div class="lb-topbar-right">
+    <%= render "lucid/backoffice/ui/reveal_eye" %>
     <% if Lucid::Backoffice.configuration.sign_out_path %>
       <% sign_out_path = instance_exec(&Lucid::Backoffice.configuration.sign_out_path) %>
       <% if Lucid::Backoffice.configuration.sign_out_method.to_sym == :get %>

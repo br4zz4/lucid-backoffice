@@ -33,3 +33,15 @@ document.addEventListener("DOMContentLoaded", function () {
   var toggle = document.querySelector(".lb-sidebar-toggle");
   if (toggle && window.matchMedia("(min-width: 40.01rem)").matches) { toggle.setAttribute("open", ""); }
 });
+
+document.addEventListener("click", function (event) {
+  var opener = event.target.closest("[data-lb-reveal-open]");
+  if (opener) {
+    var dialog = document.querySelector("dialog.lb-reveal-dialog");
+    if (dialog && dialog.showModal) { dialog.showModal(); var field = dialog.querySelector("[data-lb-reason]"); if (field) { field.focus(); } }
+    return;
+  }
+  var closer = event.target.closest("[data-lb-reveal-close]");
+  if (closer) { var open = closer.closest("dialog"); if (open) { open.close(); } return; }
+  if (event.target.matches && event.target.matches("dialog.lb-reveal-dialog")) { event.target.close(); }
+});
