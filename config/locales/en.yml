@@ -36,6 +36,11 @@ en:
     extra_table: "Extra table %{table}"
     pending_version: "Pending migration %{version}"
     ignored_filters: "Ignored filters: %{filters}"
+    search: Search
+    add_filter: "+ Filter"
+    remove_filter: "Remove filter %{name}"
+    filter_column: Column
+    filter_value: Value
     reveal_title: Reveal data
     reason: Reason
     revealed: Data revealed

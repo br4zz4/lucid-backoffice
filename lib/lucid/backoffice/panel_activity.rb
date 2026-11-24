@@ -5,17 +5,19 @@ module Lucid
     module PanelActivity
       module_function
 
-      def browse(table:, tenant: nil)
-        record("backoffice.browse", table, nil, tenant)
+      # @param criteria [Array<String>] the names of the columns used to filter, search or sort, never the values
+      def browse(table:, tenant: nil, criteria: [])
+        names = criteria.map(&:to_s).grep(Activity::Event::TOKEN).uniq.sort
+        record("backoffice.browse", table, nil, tenant, names.any? ? { criteria: names } : nil)
       end
 
       def view(table:, id:, tenant: nil)
         record("backoffice.view", table, id, tenant)
       end
 
-      def record(name, table, id, tenant)
+      def record(name, table, id, tenant, payload = nil)
         Current.tenant_identifier ||= Reveal.tenant_identifier(tenant)
-        Activity.record(name: name, subjects: [{ "type" => "Table", "name" => table.to_s, "id" => id }.compact])
+        Activity.record(name: name, subjects: [{ "type" => "Table", "name" => table.to_s, "id" => id }.compact], **{ payload: payload }.compact)
       end
       private_class_method :record
     end
