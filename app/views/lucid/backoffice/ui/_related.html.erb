@@ -1,0 +1,11 @@
+<% if related.any? %>
+  <section class="lb-section lb-related">
+    <h2><%= t("lucid_backoffice.related") %></h2>
+    <ul>
+      <% related.each do |item| %>
+        <% href = current_tenant ? tenant_table_path(tenant_id: tenancy.identifier(current_tenant), table: item.table, filter: { item.column => record_id }) : table_path(table: item.table, filter: { item.column => record_id }) %>
+        <li><a href="<%= href %>"><%= item.table %></a> <span class="lb-muted"><%= item.count %></span></li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>

@@ -45,6 +45,7 @@ pt-BR:
     pending_version: "Migration pendente %{version}"
     ignored_filters: "Filtros ignorados: %{filters}"
     search: Buscar
+    related: Relacionados
     add_filter: "+ Filtro"
     remove_filter: "Remover filtro %{name}"
     filter_column: Coluna

@@ -79,8 +79,8 @@ class PanelTest < ActionDispatch::IntegrationTest
 
   def drop_data
     %w[alfa beta].each { |schema| connection.execute("DROP SCHEMA IF EXISTS #{schema} CASCADE") }
-    connection.execute("DROP TABLE IF EXISTS public.students")
-    connection.execute("DROP TABLE IF EXISTS public.guardians")
+    connection.execute("DROP TABLE IF EXISTS public.students CASCADE")
+    connection.execute("DROP TABLE IF EXISTS public.guardians CASCADE")
   end
 
   def create_tenant_schemas
