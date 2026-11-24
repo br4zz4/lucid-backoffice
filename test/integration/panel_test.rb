@@ -456,8 +456,9 @@ class PanelIntegrationTest < PanelTest
     end
 
     # act
-    en = flatten.call(I18n.backend.translations[:en][:lucid_backoffice])
-    pt = flatten.call(I18n.backend.translations[:"pt-BR"][:lucid_backoffice])
+    translations = I18n.backend.translations(do_init: true)
+    en = flatten.call(translations[:en][:lucid_backoffice])
+    pt = flatten.call(translations[:"pt-BR"][:lucid_backoffice])
 
     # assert
     assert_empty en - pt
