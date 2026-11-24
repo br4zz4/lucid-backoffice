@@ -12,27 +12,28 @@
     <% end %>
   <% else %>
     <% title = current_tenant ? t("lucid_backoffice.reveal_title_in", context: context_label) : t("lucid_backoffice.reveal_title") %>
-    <button type="button" class="lb-eye" data-lb-reveal-open title="<%= title %>">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.7 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17.7 17.7 0 0 1-2.2 3.2M6.6 6.6A17.5 17.5 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>
-      <span><%= t("lucid_backoffice.masked_data") %></span>
-    </button>
-    <dialog class="lb-reveal-dialog">
-      <%= form_with url: lb_routes.reveals_path, method: :post, class: "lb-reveal-form", data: { lb_reason_form: true } do %>
-        <div class="lb-dialog-body">
-          <h2><%= title %></h2>
-          <p><%= t("lucid_backoffice.reveal_explainer", minutes: minutes) %></p>
-          <div class="lb-reveal-categories">
-            <% categories.each do |category| %><span class="lb-tag"><%= category %></span><% end %>
+    <details class="lb-eye-pop">
+      <summary class="lb-eye" title="<%= title %>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.7 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17.7 17.7 0 0 1-2.2 3.2M6.6 6.6A17.5 17.5 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>
+        <span class="lb-eye-label"><%= t("lucid_backoffice.masked_data") %></span>
+      </summary>
+      <div class="lb-reveal-dialog">
+        <%= form_with url: lb_routes.reveals_path, method: :post, class: "lb-reveal-form", data: { lb_reason_form: true } do %>
+          <div class="lb-dialog-body">
+            <h2><%= title %></h2>
+            <p><%= t("lucid_backoffice.reveal_explainer", minutes: minutes) %></p>
+            <div class="lb-reveal-categories">
+              <% categories.each do |category| %><span class="lb-tag"><%= category %></span><% end %>
+            </div>
+            <%= hidden_field_tag :tenant_id, scope_id if scope_id %>
+            <label for="lb-reveal-reason"><%= t("lucid_backoffice.reason") %></label>
+            <%= text_area_tag :reason, nil, id: "lb-reveal-reason", minlength: Lucid::Backoffice.configuration.reveal_reason_min, required: true, data: { lb_reason: true } %>
           </div>
-          <%= hidden_field_tag :tenant_id, scope_id if scope_id %>
-          <label for="lb-reveal-reason"><%= t("lucid_backoffice.reason") %></label>
-          <%= text_area_tag :reason, nil, id: "lb-reveal-reason", minlength: Lucid::Backoffice.configuration.reveal_reason_min, required: true, data: { lb_reason: true } %>
-        </div>
-        <div class="lb-dialog-foot">
-          <button type="button" class="lb-button lb-button-ghost" data-lb-reveal-close><%= t("lucid_backoffice.cancel") %></button>
-          <%= submit_tag t("lucid_backoffice.reveal_all", minutes: minutes), class: "lb-button", disabled: true, data: { lb_submit: true } %>
-        </div>
-      <% end %>
-    </dialog>
+          <div class="lb-dialog-foot">
+            <%= submit_tag t("lucid_backoffice.reveal_all", minutes: minutes), class: "lb-button", data: { lb_submit: true } %>
+          </div>
+        <% end %>
+      </div>
+    </details>
   <% end %>
 <% end %>

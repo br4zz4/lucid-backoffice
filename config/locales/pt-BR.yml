@@ -22,7 +22,7 @@ pt-BR:
     no_records: "Nenhum registro em %{table}"
     enter: "Entrar →"
     pager_range: "%{from}–%{to} de %{total}"
-    shared: Compartilhado
+    shared: Home
     context: Contexto
     menu: Menu
     overview: Visão geral

@@ -14,7 +14,7 @@ en:
     no_records: "No records in %{table}"
     enter: "Enter →"
     pager_range: "%{from}–%{to} of %{total}"
-    shared: Shared
+    shared: Home
     context: Context
     menu: Menu
     overview: Overview

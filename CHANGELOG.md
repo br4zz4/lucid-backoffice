@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+- **Fix:** `GET /assets/lucid_backoffice.js` answered 422 in apps with `protect_from_forgery` (Rails blocks cross-origin JavaScript GETs), so no JS ran. `AssetsController` skips forgery protection (it only serves public static files).
+- The reveal eye works without JavaScript (`<details>` panel, no disabled submit).
+- The shared context is called "Home". Breadcrumb in muted colors on one line (last item only on mobile); sidebar items look like buttons.
+
 ## 0.3.0
 
 New layout: a sidebar with the current context, a top bar with the reveal eye and Sign out, a standard page header and an empty state. Works with and without tenancy.
