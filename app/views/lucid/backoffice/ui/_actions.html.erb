@@ -2,12 +2,27 @@
 <% entries = tenancy.with(tenant) { actions.map { |a| instance = a.new(record: record, tenant: tenant); [a, instance.visible?, instance.visible? ? instance.unavailable_reason : nil] } } %>
 <% entries = entries.select { |_a, visible, _reason| visible } %>
 <% if entries.any? %>
-  <section class="lb-section">
-    <h2><%= t("lucid_backoffice.actions") %></h2>
-    <% entries.each do |a, _visible, reason| %>
+  <% inline, menu = entries.size > 3 ? [entries.first(1), entries.drop(1)] : [entries, []] %>
+  <div class="lb-actions">
+    <% inline.each do |a, _visible, reason| %>
       <% path = lb_routes.new_action_path(action_key: a.key, record_id: record&.id, tenant_id: tenant && tenancy.identifier(tenant)) %>
-      <% if reason %><span class="lb-button" aria-disabled="true" title="<%= reason %>"><%= a.label %></span><small><%= reason %></small>
-      <% else %><a class="lb-button" href="<%= path %>"><%= a.label %></a><% end %>
+      <% css = "lb-button#{" lb-button-danger" if a.danger == :high}" %>
+      <span class="lb-action">
+        <% if reason %><span class="<%= css %>" aria-disabled="true" title="<%= reason %>"><%= a.label %></span><small><%= reason %></small>
+        <% else %><a class="<%= css %>" href="<%= path %>"><%= a.label %></a><% end %>
+      </span>
     <% end %>
-  </section>
+    <% if menu.any? %>
+      <details class="lb-menu">
+        <summary class="lb-button"><%= t("lucid_backoffice.more_actions") %></summary>
+        <div class="lb-menu-list">
+          <% menu.each do |a, _visible, reason| %>
+            <% path = lb_routes.new_action_path(action_key: a.key, record_id: record&.id, tenant_id: tenant && tenancy.identifier(tenant)) %>
+            <% if reason %><span class="lb-menu-item" aria-disabled="true"><%= a.label %><small><%= reason %></small></span>
+            <% else %><a class="lb-menu-item<%= " lb-menu-danger" if a.danger == :high %>" href="<%= path %>"><%= a.label %></a><% end %>
+          <% end %>
+        </div>
+      </details>
+    <% end %>
+  </div>
 <% end %>

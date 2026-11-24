@@ -18,7 +18,7 @@ module Lucid
       end
 
       helper_method :current_operator, :allowed?, :lucid_backoffice_menu, :tenancy, :current_tenant, :lb_routes,
-                    :lb_root_path, :current_reveals, :context_label, :context_schema, :context_tables, :context_switch_tenants, :table_link, :lb_current?
+                    :lb_root_path, :lb_context_crumbs, :current_reveals, :context_label, :context_schema, :context_tables, :context_switch_tenants, :table_link, :lb_current?
 
       private
 
@@ -57,6 +57,13 @@ module Lucid
       def current_reveals
         @current_reveals ||= Reveal.active.where(operator_type: current_operator.class.name, operator_id: current_operator.id,
                                                  tenant_identifier: Reveal.tenant_identifier(current_tenant)).to_a
+      end
+
+      def lb_context_crumbs
+        shared = Lucid::Backoffice.configuration.terms.fetch(:shared, I18n.t("lucid_backoffice.shared"))
+        crumbs = [[shared, lb_root_path]]
+        crumbs << [tenancy.label(current_tenant), lb_routes.tenant_path(tenant_id: tenancy.identifier(current_tenant))] if current_tenant
+        crumbs
       end
 
       def context_label

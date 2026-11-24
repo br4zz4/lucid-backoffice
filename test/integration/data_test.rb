@@ -328,4 +328,94 @@ class DataIntegrationTest < PanelTest
     # assert
     assert_response :not_found
   end
+
+  def shared_label = I18n.t("lucid_backoffice.shared")
+  def crumbs = dom.css("header.lb-topbar .lb-crumbs a, header.lb-topbar .lb-crumbs b").map { |node| [node.name, node.text.strip, node["href"]] }
+  def configure_tenant_data
+    create_tenant_schemas
+    configure_panel(permissions: { 1 => %i[browse view_tenant view_dashboard] }, tenancy: FakeTenancy.new)
+  end
+
+  def test_record_page_breadcrumb_runs_from_shared_to_the_record
+    # arrange
+    insert_student
+
+    # act
+    get "/backoffice/data/students/1", headers: as(1)
+
+    # assert
+    expected = [["a", shared_label, "/backoffice"], ["a", I18n.t("lucid_backoffice.data"), "/backoffice/data"],
+                ["a", "students", "/backoffice/data/students"], ["b", "#1", nil]]
+    assert_equal expected, crumbs
+    assert dom.at_css("header.lb-topbar .lb-crumbs span.lb-crumb-sep")
+  end
+
+  def test_tenant_record_page_breadcrumb_includes_the_tenant
+    # arrange
+    configure_tenant_data
+
+    # act
+    get "/backoffice/tenants/alfa/data/students/1", headers: as(1)
+
+    # assert
+    expected = [["a", shared_label, "/backoffice"], ["a", "Escola alfa", "/backoffice/tenants/alfa"],
+                ["a", I18n.t("lucid_backoffice.data"), "/backoffice/tenants/alfa/data"],
+                ["a", "students", "/backoffice/tenants/alfa/data/students"], ["b", "#1", nil]]
+    assert_equal expected, crumbs
+  end
+
+  def test_record_page_title_is_table_and_id
+    # arrange
+    insert_student
+
+    # act
+    get "/backoffice/data/students/1", headers: as(1)
+
+    # assert
+    assert_equal "students #1", dom.at_css(".lb-page-head h1").text.strip
+  end
+
+  def test_tenant_page_header_has_label_identifier_and_breadcrumb
+    # arrange
+    configure_tenant_data
+
+    # act
+    get "/backoffice/tenants/alfa", headers: as(1)
+
+    # assert
+    head = dom.at_css(".lb-page-head h1")
+    assert_includes head.text, "Escola alfa"
+    assert_equal "alfa", head.at_css("small").text.strip
+    assert_equal [["a", shared_label, "/backoffice"], ["b", "Escola alfa", nil]], crumbs
+  end
+
+  def test_page_without_crumbs_shows_only_the_context_in_the_topbar
+    # arrange
+    path = "/backoffice"
+
+    # act
+    get path, headers: as(1)
+
+    # assert
+    assert_includes dom.at_css("header.lb-topbar .lb-crumbs").text, shared_label
+    assert_empty dom.css("header.lb-topbar .lb-crumbs .lb-crumb-sep")
+  end
+
+  def test_css_makes_primary_buttons_readable_and_styles_the_disabled_state_and_menu
+    # arrange
+    path = "/backoffice/assets/lucid_backoffice.css"
+
+    # act
+    get path
+    css = response.body
+    primary = css[/\.lb a\.lb-button\s*\{[^}]*\}/m]
+    disabled = css[/\.lb-button\[aria-disabled="true"\][^{]*\{[^}]*\}/m]
+
+    # assert
+    assert primary, "missing .lb a.lb-button rule"
+    assert_includes primary, "color: var(--lb-on-accent)"
+    assert disabled, "missing disabled button rule"
+    assert_includes disabled, "dashed"
+    assert_includes css, ".lb-menu"
+  end
 end

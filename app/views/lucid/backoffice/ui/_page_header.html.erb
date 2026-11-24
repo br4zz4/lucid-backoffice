@@ -1,0 +1,20 @@
+<% crumbs = local_assigns[:crumbs] %>
+<% if crumbs %>
+  <% content_for :lb_crumbs do %>
+    <% crumbs.each_with_index do |(label, path), index| %>
+      <% if index.positive? %><span class="lb-crumb-sep">/</span><% end %>
+      <% if path %><a href="<%= path %>"><%= label %></a><% else %><b><%= label %></b><% end %>
+    <% end %>
+  <% end %>
+<% end %>
+<div class="lb-page-head">
+  <div class="lb-page-title">
+    <h1><%= title %></h1>
+    <% if local_assigns[:subtitle].present? %><div class="lb-page-sub"><%= subtitle %></div><% end %>
+  </div>
+  <div class="lb-page-actions">
+    <% if local_assigns[:target] %>
+      <%= render "lucid/backoffice/ui/actions", target: target, record: local_assigns[:record], tenant: local_assigns[:tenant] %>
+    <% end %>
+  </div>
+</div>
