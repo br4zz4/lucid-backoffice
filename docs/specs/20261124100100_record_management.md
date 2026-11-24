@@ -1,6 +1,6 @@
 ---
 title: Gerenciar dados no painel — busca, filtros, relacionamentos, campos travados e criar/editar/excluir declarados
-status: proposed
+status: done
 created: 2026-11-24
 updated: 2026-11-24
 owner: "@oporpino"
@@ -409,36 +409,43 @@ Merge in this order: #<pr1> #<pr2> #<pr3> #<pr4> #<pr5> #<pr6> #<pr7> #<pr8> #<p
 
 # definition of done
 
-- [ ] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato)
-- [ ] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.test` no luneta)
-- [ ] Toda task do "how" executada
-- [ ] Documentação atualizada (`docs/resources.md`, `docs/actions.md`, `docs/configuration.md`, `docs/security.md`, `docs/masking-and-reveals.md`, `README.md`, `CHANGELOG.md`; luneta `docs/guides/sysadmin.md` e nota no ADR 0004)
-- [ ] Staging: `staging: none` nos dois repos — passo pulado e reportado
-- [ ] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes)
-- [ ] Último PR liga a funcionalidade e remove código temporário (PR 9 declara as tabelas no luneta; nenhum código temporário na gem)
-- [ ] Cenário "buscar por coluna pública": teste de integração com `filter[role]` na URL
-- [ ] Cenário "coluna mascarada não é filtrável sem revelação": teste de `Records::Query#usable?` e de integração (fora do select, critério ignorado com aviso)
-- [ ] Cenário "coluna revelada fica pesquisável": teste de integração do `POST .../query` → redirect com `q`, URL sem o texto buscado, evento `browse` com nomes de coluna e sem o valor
-- [ ] Cenário "revelação acaba com o filtro aplicado": teste com o Reveal revogado e o mesmo `q`
-- [ ] Cenário "coluna oculta nunca é critério": teste de captura de SQL (`ActiveSupport::Notifications` `sql.active_record`) sem a coluna oculta nem a mascarada não revelada em `WHERE`/`ORDER BY`
-- [ ] Cenário "ordenar por coluna visível": teste de integração da ordem e da ausência de link nas mascaradas
-- [ ] Cenário "link de chave estrangeira": teste de `Catalog.references` com FK real no banco de teste e de DOM
-- [ ] Cenário "Relacionados": teste de `Catalog.referenced_by` e da contagem e do link filtrado
-- [ ] Cenários de criar (sucesso, validação, tabela não declarada, sem permissão): testes de `Resource.creatable` e de integração (registro criado, evento com motivo, redirect; 404; 403)
-- [ ] Cenários de campo travado (travado, destrava, enviado à força, Command recebe o valor atual): testes de `initial_values`, do `Runner` e de integração (HTML sem o valor mascarado)
-- [ ] Cenários de excluir (sucesso e recusa do model): testes de `Resource.destroyable` com `danger :high` e falha legível
-- [ ] Bloco de configuração: teste de `Resource.creatable`/`editable`/`destroyable` com bloco sobrescrevendo `label` e `field` e adicionando `submit` e `secret` (`resource_test.rb`)
-- [ ] Cenários "opções de envio viram botões", "opção indisponível some" e "Ação sem submit declarado": testes de `Action.submit`/`available_submits` (`dsl_test.rb`), do `Runner` recusando `submit` fora da lista (`runner_test.rb`) e de DOM da etapa final (`actions_test.rb`)
-- [ ] Cenário "e-mail disponível lido do Rails": `mail_test.rb` cobre `:smtp` com address, sem address, `localhost`, `perform_deliveries false`, `:test`/`:file`/método custom e o override por `config.email_available`
-- [ ] Cenários "segredo de exibição única" e "segredo vazio segue o fluxo normal": `secret_test.rb` (200, `no-store`, `<input readonly>` com o valor, nenhum `<a href>` com o valor, valor ausente de flash, session, `Activity::Event` e log; reload sem o valor; `nil` redireciona)
-- [ ] Cenários "luneta, novo usuário por e-mail" e "por link": `invite_test.rb` (e-mail enviado depois do commit com host da escola; link no host da escola e nenhum e-mail) e `record_actions_test.rb` (redirect ao registro no e-mail, página de segredo no link)
-- [ ] Cenário "luneta sem e-mail configurado": `record_actions_test.rb` com `email_available` falso mostra só "Criar e copiar link"
-- [ ] Cenário "luneta, e-mail já em uso": `invite_test.rb` (nada criado, falha `:invalid` com a mensagem do User) e `record_actions_test.rb` (form volta preenchido)
-- [ ] Cenário "luneta, falha no envio do e-mail": `invite_test.rb` com `User::SendPasswordReset` levantando, o usuário persiste e `Rails.error.report` é chamado
-- [ ] Cenário "luneta, gerar link de definição de senha": `generate_set_password_link_test.rb` (case e action), com o token anterior inválido e o novo aceito por `User.reset_password_by_token`
-- [ ] Cenário "exemplos no luneta": `make core.test` verde com os testes de `User::Invite` e de `record_actions_test.rb` (superadmin vê as ações, support não vê nenhuma, nem "Gerar link de definição de senha")
-- [ ] Tag `v0.4.0` publicada no remoto da gem
-- [ ] Banner `FINISHED` impresso como última saída (`br4zz4:finish`, Step 7), só com todos os itens acima marcados
+- [x] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato)
+- [x] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.test` no luneta)
+- [x] Toda task do "how" executada
+- [x] Documentação atualizada (`docs/resources.md`, `docs/actions.md`, `docs/configuration.md`, `docs/security.md`, `docs/masking-and-reveals.md`, `README.md`, `CHANGELOG.md`; luneta `docs/guides/sysadmin.md` e nota no ADR 0004)
+- [x] Staging: `staging: none` nos dois repos — passo pulado e reportado
+- [x] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes)
+- [x] Último PR liga a funcionalidade e remove código temporário (PR 9 declara as tabelas no luneta; nenhum código temporário na gem)
+- [x] Cenário "buscar por coluna pública": teste de integração com `filter[role]` na URL
+- [x] Cenário "coluna mascarada não é filtrável sem revelação": teste de `Records::Query#usable?` e de integração (fora do select, critério ignorado com aviso)
+- [x] Cenário "coluna revelada fica pesquisável": teste de integração do `POST .../query` → redirect com `q`, URL sem o texto buscado, evento `browse` com nomes de coluna e sem o valor
+- [x] Cenário "revelação acaba com o filtro aplicado": teste com o Reveal revogado e o mesmo `q`
+- [x] Cenário "coluna oculta nunca é critério": teste de captura de SQL (`ActiveSupport::Notifications` `sql.active_record`) sem a coluna oculta nem a mascarada não revelada em `WHERE`/`ORDER BY`
+- [x] Cenário "ordenar por coluna visível": teste de integração da ordem e da ausência de link nas mascaradas
+- [x] Cenário "link de chave estrangeira": teste de `Catalog.references` com FK real no banco de teste e de DOM
+- [x] Cenário "Relacionados": teste de `Catalog.referenced_by` e da contagem e do link filtrado
+- [x] Cenários de criar (sucesso, validação, tabela não declarada, sem permissão): testes de `Resource.creatable` e de integração (registro criado, evento com motivo, redirect; 404; 403)
+- [x] Cenários de campo travado (travado, destrava, enviado à força, Command recebe o valor atual): testes de `initial_values`, do `Runner` e de integração (HTML sem o valor mascarado)
+- [x] Cenários de excluir (sucesso e recusa do model): testes de `Resource.destroyable` com `danger :high` e falha legível
+- [x] Bloco de configuração: teste de `Resource.creatable`/`editable`/`destroyable` com bloco sobrescrevendo `label` e `field` e adicionando `submit` e `secret` (`resource_test.rb`)
+- [x] Cenários "opções de envio viram botões", "opção indisponível some" e "Ação sem submit declarado": testes de `Action.submit`/`available_submits` (`dsl_test.rb`), do `Runner` recusando `submit` fora da lista (`runner_test.rb`) e de DOM da etapa final (`actions_test.rb`)
+- [x] Cenário "e-mail disponível lido do Rails": `mail_test.rb` cobre `:smtp` com address, sem address, `localhost`, `perform_deliveries false`, `:test`/`:file`/método custom e o override por `config.email_available`
+- [x] Cenários "segredo de exibição única" e "segredo vazio segue o fluxo normal": `secret_test.rb` (200, `no-store`, `<input readonly>` com o valor, nenhum `<a href>` com o valor, valor ausente de flash, session, `Activity::Event` e log; reload sem o valor; `nil` redireciona)
+- [x] Cenários "luneta, novo usuário por e-mail" e "por link": `invite_test.rb` (e-mail enviado depois do commit com host da escola; link no host da escola e nenhum e-mail) e `record_actions_test.rb` (redirect ao registro no e-mail, página de segredo no link)
+- [x] Cenário "luneta sem e-mail configurado": `record_actions_test.rb` com `email_available` falso mostra só "Criar e copiar link"
+- [x] Cenário "luneta, e-mail já em uso": `invite_test.rb` (nada criado, falha `:invalid` com a mensagem do User) e `record_actions_test.rb` (form volta preenchido)
+- [x] Cenário "luneta, falha no envio do e-mail": `invite_test.rb` com `User::SendPasswordReset` levantando, o usuário persiste e `Rails.error.report` é chamado
+- [x] Cenário "luneta, gerar link de definição de senha": `generate_set_password_link_test.rb` (case e action), com o token anterior inválido e o novo aceito por `User.reset_password_by_token`
+- [x] Cenário "exemplos no luneta": `make core.test` verde com os testes de `User::Invite` e de `record_actions_test.rb` (superadmin vê as ações, support não vê nenhuma, nem "Gerar link de definição de senha")
+- [x] Tag `v0.4.0` publicada no remoto da gem
+- [x] Banner `FINISHED` impresso como última saída (`br4zz4:finish`, Step 7), só com todos os itens acima marcados
+
+**Evidência:**
+- Gem `lucid-backoffice`: PRs #35 a #42 mais a correção #44 mergeados em ordem, CI verde (Ubuntu 3.2/3.4 e macOS 3.4; o hang intermitente do macOS está na issue #45). `main` na `v0.4.0`: `bundle exec rake test` com 1075 runs, 3190 assertions, 0 falhas, 0 erros. Tag `v0.4.0` em `4868072`.
+- Review da gem (reviewer): 5 MAJOR corrigidos no PR #44 (log dos critérios, tamanho da sessão, nonce do segredo, coluna oculta travada, i18n); menores restantes na issue #43.
+- Luneta: PRs #188 (PR 9) e #197 (adaptação ao Account do ADR 0010) mergeados com CI verde (lint, audit, test); suíte local 1643 runs, 0 falhas.
+- Staging: deploy `core.2026-11-24.023` ok; ping `https://staging.lunetamagica.com.br`: `/up` 200, `/backoffice/sysadmins/sign_in` 200, `/backoffice`, `/backoffice/data/users`, `/backoffice/actions/create_users/new` e `/backoffice/actions/generate_set_password_link/new` 302 para o login (exige auth).
+- Desvios: o exemplo de classrooms não demonstra recusa pelo model (`Classroom` não tem dependentes; o `has_many :enrollments` quebrado foi removido); a recusa é coberta na gem com `gadgets`/`parts`. O PR 9 foi adaptado ao `Account` (ADR 0010) em #197.
 
 ## documentation
 
