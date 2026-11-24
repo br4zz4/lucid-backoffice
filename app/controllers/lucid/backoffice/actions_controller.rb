@@ -20,7 +20,7 @@ module Lucid
         result = tenancy.with(current_tenant) do
           Action::Runner.call(@action_class, operator: current_operator, reason: params[:reason], snapshot: params[:snapshot].to_s,
                               record: find_record, tenant: current_tenant, params: field_params, confirmation: params[:confirmation],
-                              revealed: revealed_categories)
+                              revealed: revealed_categories, submit: params[:submit])
         end
         if result.ok?
           notice = result.message.presence || I18n.t("lucid_backoffice.action_done")

@@ -1218,4 +1218,159 @@ class ActionsIntegrationTest < PanelTest
     assert_response :redirect
     assert_equal ["Nova"], Account.pluck(:nickname)
   end
+
+  def submit_action_definition(performed)
+    define_action("SendReport") do
+      on :global
+      label "Enviar relatório"
+      submit :screen, label: "Mostrar na tela"
+      submit :email, label: "Enviar por e-mail", if: -> { email_available? }
+      perform { performed << submitted }
+    end
+  end
+
+  def final_buttons = dom.css("form [data-lb-submit]")
+
+  def button_label(button) = button.name == "button" ? button.text.strip : button["value"]
+
+  def test_final_step_offers_one_button_per_submit_option_when_email_is_available
+    # arrange
+    configure_actions
+    Lucid::Backoffice.configuration.email_available = -> { true }
+    submit_action_definition([])
+
+    # act
+    open_preview("send_report", {})
+
+    # assert
+    assert_response :ok
+    assert_equal %w[screen email], final_buttons.map { |button| button["name"] == "submit" ? button["value"] : button["name"] }
+  end
+
+  def test_final_step_buttons_show_the_option_labels_and_no_generic_execute
+    # arrange
+    configure_actions
+    Lucid::Backoffice.configuration.email_available = -> { true }
+    submit_action_definition([])
+
+    # act
+    open_preview("send_report", {})
+
+    # assert
+    assert_equal ["Mostrar na tela", "Enviar por e-mail"], final_buttons.map { |button| button_label(button) }
+    refute_includes final_buttons.map { |button| button_label(button) }, I18n.t("lucid_backoffice.execute")
+  end
+
+  def test_unavailable_option_disappears_from_the_final_step
+    # arrange
+    configure_actions
+    Lucid::Backoffice.configuration.email_available = -> { false }
+    submit_action_definition([])
+
+    # act
+    open_preview("send_report", {})
+
+    # assert
+    assert_equal [%w[submit screen]], final_buttons.map { |button| [button["name"], button["value"]] }
+    assert_equal ["Mostrar na tela"], final_buttons.map { |button| button_label(button) }
+    refute_includes response.body, "Enviar por e-mail"
+  end
+
+  def test_final_step_buttons_start_disabled_for_the_javascript_to_enable
+    # arrange
+    configure_actions
+    Lucid::Backoffice.configuration.email_available = -> { true }
+    submit_action_definition([])
+
+    # act
+    open_preview("send_report", {})
+
+    # assert
+    assert final_buttons.all? { |button| button["disabled"] }
+    assert_equal 2, final_buttons.size
+  end
+
+  def test_post_with_an_unavailable_option_fails_as_invalid_and_runs_nothing
+    # arrange
+    configure_actions
+    Lucid::Backoffice.configuration.email_available = -> { false }
+    performed = []
+    submit_action_definition(performed)
+    open_preview("send_report", {})
+    snapshot = snapshot_value
+
+    # act
+    submit_action("send_report", { snapshot: snapshot, reason: REASON, submit: "email" })
+
+    # assert
+    assert_response :unprocessable_entity
+    assert_equal [], performed
+    assert_empty events("backoffice.action.send_report")
+    assert_includes alert_text, "submit option not available"
+  end
+
+  def test_post_without_an_option_fails_when_the_action_declares_submits
+    # arrange
+    configure_actions
+    performed = []
+    submit_action_definition(performed)
+    open_preview("send_report", {})
+    snapshot = snapshot_value
+
+    # act
+    submit_action("send_report", { snapshot: snapshot, reason: REASON })
+
+    # assert
+    assert_equal [[], 0], [performed, events("backoffice.action.send_report").size]
+    assert_includes alert_text, "submit option not available"
+  end
+
+  def test_post_with_an_available_option_runs_it_and_records_the_event
+    # arrange
+    configure_actions
+    Lucid::Backoffice.configuration.email_available = -> { true }
+    performed = []
+    submit_action_definition(performed)
+    open_preview("send_report", {})
+    snapshot = snapshot_value
+
+    # act
+    submit_action("send_report", { snapshot: snapshot, reason: REASON, submit: "email" })
+
+    # assert
+    assert_response :redirect
+    assert_equal [[:email], 1], [performed, events("backoffice.action.send_report").size]
+  end
+
+  def test_action_without_submit_shows_the_single_execute_button
+    # arrange
+    configure_actions
+    grant_contact_reveal
+    role_action
+    account = create_account
+    role_preview(account)
+
+    # act
+    buttons = final_buttons
+
+    # assert
+    assert_equal [nil], buttons.map { |button| button["name"] }
+    assert_equal [I18n.t("lucid_backoffice.execute")], buttons.map { |button| button_label(button) }
+  end
+
+  def test_action_without_submit_ignores_a_submit_param
+    # arrange
+    configure_actions
+    grant_contact_reveal
+    role_action
+    account = create_account
+    snapshot = role_preview(account)
+
+    # act
+    submit_action("change_user_role", role_submission(account, snapshot, submit: "email"))
+
+    # assert
+    assert_response :redirect
+    assert_equal "coordinator", account.reload.role
+  end
 end

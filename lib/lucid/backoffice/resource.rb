@@ -90,7 +90,7 @@ module Lucid
 
         # Adds an "Edit" action over these columns and nothing else. +with:+ routes the write through a
         # Command, so its guards, validations and events apply.
-        def editable(*names, with: nil)
+        def editable(*names, with: nil, &block)
           resource_table = table
           fields = names.map(&:to_sym)
           types = editable_types(resource_table, fields)
@@ -104,6 +104,7 @@ module Lucid
           else
             klass.perform { record.update!(self.class.fields.keys.to_h { |field| [field, public_send(field)] }) }
           end
+          klass.class_eval(&block) if block
           @editable = klass
         end
 
@@ -113,7 +114,7 @@ module Lucid
 
         # Adds a "New record" action over these columns, on the table as a whole. By default it runs
         # +Model.create!+; +with:+ routes it through a Command. Hidden columns cannot be fields.
-        def creatable(*names, with: nil)
+        def creatable(*names, with: nil, &block)
           resource_table = table
           fields = names.map(&:to_sym)
           model = record_model!(:creatable)
@@ -136,6 +137,7 @@ module Lucid
               Action::Failure.new(type: :invalid, errors: [e.record.errors.full_messages.to_sentence])
             end
           end
+          klass.class_eval(&block) if block
           @creatable = klass
         end
 
@@ -144,7 +146,7 @@ module Lucid
         end
 
         # Adds a "Delete record" action (danger high, typing the record id). +with:+ routes it through a Command.
-        def destroyable(with: nil)
+        def destroyable(with: nil, &block)
           resource_table = table
           record_model!(:destroyable)
           klass = action_class("destroy_#{resource_table}", "Destroy")
@@ -160,6 +162,7 @@ module Lucid
               record.destroy ? record : Action::Failure.new(type: :not_destroyed, errors: [record.errors.full_messages.to_sentence])
             end
           end
+          klass.class_eval(&block) if block
           @destroyable = klass
         end
 

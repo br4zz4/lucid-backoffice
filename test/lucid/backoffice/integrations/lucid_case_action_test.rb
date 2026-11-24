@@ -55,6 +55,16 @@ module Accounts
   end
 end
 
+module Accounts
+  class Notify < Lucid::Case::Command
+    attributes :role, :record, :submit
+
+    def call!
+      success(via: submit)
+    end
+  end
+end
+
 class LucidCaseActionTest < ActionTest
   def setup
     super
@@ -257,5 +267,42 @@ class LucidCaseActionTest < ActionTest
     # assert
     assert_equal "last_owner", action_events("backoffice.action.change_user_role").sole.outcome
     assert_equal ["last_owner"], action_events("accounts.change_role_guarded").map(&:outcome)
+  end
+
+  def test_command_declaring_submit_receives_the_chosen_option_as_a_symbol
+    # arrange
+    configure_actions
+    account = create_account(role: "teacher")
+    action = build_action do
+      on :accounts
+      field :role, :select, choices: -> { %w[teacher coordinator owner] }
+      submit :email, label: "Enviar por e-mail"
+      submit :screen, label: "Mostrar na tela"
+      perform with: Accounts::Notify
+    end
+
+    # act
+    result = run_action(action, record: account, params: { role: "coordinator" }, submit: "email")
+
+    # assert
+    assert_equal [:ok, :email], [result.status, result.value[:via]]
+  end
+
+  def test_command_without_a_submit_attribute_runs_with_a_declared_submit
+    # arrange
+    configure_actions
+    account = create_account(role: "teacher")
+    action = build_action do
+      on :accounts
+      field :role, :select, choices: -> { %w[teacher coordinator owner] }
+      submit :screen, label: "Mostrar na tela"
+      perform with: Accounts::ChangeRole
+    end
+
+    # act
+    result = run_action(action, record: account, params: { role: "coordinator" }, submit: "screen")
+
+    # assert
+    assert_equal [:ok, "coordinator"], [result.status, account.reload.role]
   end
 end
