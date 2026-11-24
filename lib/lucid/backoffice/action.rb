@@ -20,8 +20,8 @@ module Lucid
         def [](key) = key.to_sym == :errors ? errors : nil
       end
 
-      Result = Data.define(:status, :message, :value, :redirect) do
-        def initialize(status:, message:, value:, redirect: nil) = super
+      Result = Data.define(:status, :message, :value, :redirect, :secret) do
+        def initialize(status:, message:, value:, redirect: nil, secret: nil) = super
 
         def ok? = status == :ok
       end
@@ -131,6 +131,12 @@ module Lucid
 
         def perform_with
           @perform_with
+        end
+
+        # A value handed back to the operator once, right after the action runs, to be copied and passed on
+        # (a set-password link, a token). +secret { |value| string }+; nil or blank means there is none.
+        def secret(&block)
+          block ? @secret = block : @secret
         end
 
         def result(&block)
@@ -246,6 +252,13 @@ module Lucid
         attributes[:tenant] = tenant if names.include?(:tenant)
         attributes[:submit] = submitted if names.include?(:submit)
         command.call(**attributes)
+      end
+
+      # @return [String, nil] the one-time secret of this run
+      def secret_for(value)
+        return nil unless self.class.secret
+
+        instance_exec(value, &self.class.secret).presence&.to_s
       end
 
       def result_message(value)

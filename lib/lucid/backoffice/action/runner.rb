@@ -49,7 +49,7 @@ module Lucid
             Activity.record(name: name, outcome: failure_of(value) || "ok", reason: reason)
           end
           type = failure_of(value)
-          type ? Action::Result.new(status: :failed, message: failure_message(action_class, value, type), value: value) : Action::Result.new(status: :ok, message: action.result_message(value), value: value, redirect: action.redirect_url(value))
+          type ? Action::Result.new(status: :failed, message: failure_message(action_class, value, type), value: value) : Action::Result.new(status: :ok, message: action.result_message(value), value: value, redirect: action.redirect_url(value), secret: action.secret_for(value))
         end
 
         def failure_message(action_class, value, type)

@@ -37,6 +37,11 @@ en:
     pending_version: "Pending migration %{version}"
     ignored_filters: "Ignored filters: %{filters}"
     search: Search
+    secret_title: Shown only once
+    secret_warning: Copy it and send it to the person. It will not be shown again.
+    copy: Copy
+    copied: Copied
+    continue: Continue
     related: Related
     add_filter: "+ Filter"
     remove_filter: "Remove filter %{name}"

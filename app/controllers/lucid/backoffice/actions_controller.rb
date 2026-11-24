@@ -23,6 +23,8 @@ module Lucid
                               revealed: revealed_categories, submit: params[:submit])
         end
         if result.ok?
+          return render_secret(result) if result.secret.present?
+
           notice = result.message.presence || I18n.t("lucid_backoffice.action_done")
           return redirect_to(result.redirect, allow_other_host: true, notice: notice) if result.redirect.present?
 
@@ -48,6 +50,14 @@ module Lucid
 
       def field_params
         params.fetch(:fields, {}).permit(*@action_class.fields.keys).to_h
+      end
+
+      def render_secret(result)
+        response.headers["Cache-Control"] = "no-store"
+        @secret = result.secret
+        @notice = result.message.presence || I18n.t("lucid_backoffice.action_done")
+        @continue = result.redirect.presence || landing_path(result.value) || lb_routes.root_path
+        render :secret
       end
 
       def landing_path(value)
