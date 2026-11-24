@@ -340,6 +340,233 @@ class RevealTest < DataTest
     assert_equal 0, events("backoffice.reveal.revoke").size
   end
 
+  def grant_all(operator, reason: REASON, tenant: nil)
+    Reveal.grant_all(operator: operator, tenant: tenant, reason: reason)
+  end
+
+  def revealable
+    Lucid::Backoffice.configuration.categories - ["public"]
+  end
+
+  def deny_categories(*denied)
+    configure_minimal do |config|
+      config.authorize = ->(_operator, _permission, context) { !denied.include?(context[:category]) }
+    end
+  end
+
+  def test_grant_all_creates_one_reveal_per_revealable_category
+    # arrange
+    allow_all
+    operator = Operator.new(1)
+
+    # act
+    reveals = grant_all(operator, tenant: "school_a")
+
+    # assert
+    assert_equal revealable.sort, reveals.map(&:category).sort
+    assert_equal revealable.size, Reveal.count
+    assert reveals.all?(&:persisted?)
+    assert_equal ["school_a"], reveals.map(&:tenant_identifier).uniq
+    assert_equal [REASON], reveals.map(&:reason).uniq
+    assert_equal revealable.sort, Reveal.categories_for(operator: operator, tenant: "school_a").sort
+    refute_includes Reveal.categories_for(operator: operator, tenant: "school_a"), "public"
+  end
+
+  def test_grant_all_records_one_grant_event_per_category_with_the_same_reason
+    # arrange
+    allow_all
+    operator = Operator.new(3)
+
+    # act
+    grant_all(operator)
+
+    # assert
+    recorded = events("backoffice.reveal.grant")
+    assert_equal revealable.size, recorded.size
+    assert_equal revealable.sort, recorded.map { |event| event.payload["category"] }.sort
+    assert_equal [REASON], recorded.map(&:reason).uniq
+    assert_equal [3], recorded.map(&:actor_id).uniq
+  end
+
+  def test_grant_all_validates_the_reason_once_and_creates_nothing
+    # arrange
+    allow_all
+
+    # act
+    error = assert_raises(ActiveRecord::RecordInvalid) { grant_all(Operator.new(1), reason: "curto") }
+
+    # assert
+    assert error.record.errors[:reason].any?
+    assert_equal 0, Reveal.count
+    assert_equal 0, events("backoffice.reveal.grant").size
+  end
+
+  def test_grant_all_with_blank_reason_creates_nothing
+    # arrange
+    allow_all
+
+    # act
+    assert_raises(ActiveRecord::RecordInvalid) { grant_all(Operator.new(1), reason: "   ") }
+
+    # assert
+    assert_equal 0, Reveal.count
+    assert_equal 0, events("backoffice.reveal.grant").size
+  end
+
+  def test_grant_all_skips_denied_categories
+    # arrange
+    deny_categories("financial", "minors")
+    operator = Operator.new(1)
+
+    # act
+    reveals = grant_all(operator)
+
+    # assert
+    expected = revealable - %w[financial minors]
+    assert_equal expected.sort, reveals.map(&:category).sort
+    assert_equal expected.size, Reveal.count
+    assert_equal expected.size, events("backoffice.reveal.grant").size
+    assert_equal expected.sort, Reveal.categories_for(operator: operator).sort
+  end
+
+  def test_grant_all_asks_permission_per_revealable_category_with_tenant
+    # arrange
+    asked = []
+    configure_minimal do |config|
+      config.authorize = lambda { |operator, permission, context|
+        asked << [permission, context]
+        true
+      }
+    end
+
+    # act
+    grant_all(Operator.new(1), tenant: "school_a")
+
+    # assert
+    assert_equal revealable.map { |category| [:reveal, { tenant: "school_a", category: category }] }.sort_by { |_, c| c[:category] },
+                 asked.select { |permission, _| permission == :reveal }.uniq.sort_by { |_, c| c[:category] }
+  end
+
+  def test_grant_all_with_every_category_denied_is_forbidden_and_creates_nothing
+    # arrange
+    configure_minimal { |config| config.authorize = ->(*) { false } }
+
+    # act
+    assert_raises(Lucid::Backoffice::Error::Forbidden) { grant_all(Operator.new(1)) }
+
+    # assert
+    assert_equal 0, Reveal.count
+    assert_equal 0, events("backoffice.reveal.grant").size
+  end
+
+  def test_grant_all_is_atomic_when_a_later_step_fails
+    # arrange
+    allow_all
+    calls = 0
+    failing = lambda do |_event|
+      calls += 1
+      raise "boom" if calls == 3
+    end
+    Lucid::Backoffice::Activity::Event.set_callback(:create, :before, failing)
+
+    # act
+    begin
+      assert_raises(StandardError) { grant_all(Operator.new(1)) }
+    ensure
+      Lucid::Backoffice::Activity::Event.skip_callback(:create, :before, failing)
+    end
+
+    # assert
+    assert_equal 0, Reveal.count
+    assert_equal 0, events("backoffice.reveal.grant").size
+  end
+
+  def test_grant_all_is_scoped_to_the_tenant
+    # arrange
+    allow_all
+    operator = Operator.new(1)
+
+    # act
+    grant_all(operator, tenant: "school_a")
+
+    # assert
+    assert_equal revealable.sort, Reveal.categories_for(operator: operator, tenant: "school_a").sort
+    assert_empty Reveal.categories_for(operator: operator, tenant: "school_b")
+    assert_empty Reveal.categories_for(operator: operator)
+  end
+
+  def test_revoke_all_revokes_every_active_reveal_of_the_operator_in_the_tenant
+    # arrange
+    allow_all
+    operator = Operator.new(1)
+    grant_all(operator, tenant: "school_a")
+
+    # act
+    Reveal.revoke_all(operator: operator, tenant: "school_a")
+
+    # assert
+    assert_empty Reveal.categories_for(operator: operator, tenant: "school_a")
+    assert Reveal.all.all? { |reveal| reveal.reload.revoked_at }
+  end
+
+  def test_revoke_all_records_one_revoke_event_per_category
+    # arrange
+    allow_all
+    operator = Operator.new(1)
+    grant_all(operator)
+
+    # act
+    Reveal.revoke_all(operator: operator)
+
+    # assert
+    recorded = events("backoffice.reveal.revoke")
+    assert_equal revealable.sort, recorded.map { |event| event.payload["category"] }.sort
+    assert_equal [1], recorded.map(&:actor_id).uniq
+  end
+
+  def test_revoke_all_does_not_touch_another_tenant
+    # arrange
+    allow_all
+    operator = Operator.new(1)
+    grant_all(operator, tenant: "school_a")
+    grant_all(operator, tenant: "school_b")
+
+    # act
+    Reveal.revoke_all(operator: operator, tenant: "school_a")
+
+    # assert
+    assert_empty Reveal.categories_for(operator: operator, tenant: "school_a")
+    assert_equal revealable.sort, Reveal.categories_for(operator: operator, tenant: "school_b").sort
+    assert_equal revealable.size, events("backoffice.reveal.revoke").size
+  end
+
+  def test_revoke_all_does_not_touch_another_operator
+    # arrange
+    allow_all
+    operator_a = Operator.new(1)
+    operator_b = Operator.new(2)
+    grant_all(operator_a)
+    grant_all(operator_b)
+
+    # act
+    Reveal.revoke_all(operator: operator_a)
+
+    # assert
+    assert_empty Reveal.categories_for(operator: operator_a)
+    assert_equal revealable.sort, Reveal.categories_for(operator: operator_b).sort
+  end
+
+  def test_revoke_all_without_active_reveals_records_nothing
+    # arrange
+    allow_all
+
+    # act
+    Reveal.revoke_all(operator: Operator.new(1))
+
+    # assert
+    assert_equal 0, events("backoffice.reveal.revoke").size
+  end
+
   def test_operator_a_does_not_see_the_reveal_of_operator_b_in_records
     # arrange
     write_classification("students:\n  email: contact\n")

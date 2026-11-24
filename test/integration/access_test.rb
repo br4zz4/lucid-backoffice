@@ -144,6 +144,35 @@ class AccessIntegrationTest < PanelTest
     assert_nil reveal.reload.revoked_at
   end
 
+  def test_delete_collection_without_csrf_token_is_rejected
+    # arrange
+    configure_panel(permissions: { 1 => %i[reveal] })
+    reveal = Lucid::Backoffice::Reveal.grant(operator: PanelOperator.new(1), category: "contact", reason: "investigar chamado 123")
+
+    # act
+    with_forgery_protection do
+      assert_raises(ActionController::InvalidAuthenticityToken) { delete "/backoffice/reveals", headers: as(1) }
+    end
+
+    # assert
+    assert_nil reveal.reload.revoked_at
+  end
+
+  def test_post_without_category_and_without_csrf_token_is_rejected
+    # arrange
+    configure_panel(permissions: { 1 => %i[reveal browse] })
+
+    # act
+    with_forgery_protection do
+      assert_raises(ActionController::InvalidAuthenticityToken) do
+        post "/backoffice/reveals", params: { reason: "investigar chamado 123" }, headers: as(1)
+      end
+    end
+
+    # assert
+    assert_equal 0, Lucid::Backoffice::Reveal.count
+  end
+
   def test_only_post_and_delete_reveals_are_not_get
     # arrange
     routes = Lucid::Backoffice::Engine.routes.routes
@@ -152,6 +181,6 @@ class AccessIntegrationTest < PanelTest
     writing = routes.reject { |route| route.verb == "GET" }.map { |route| [route.verb, route.path.spec.to_s.sub("(.:format)", "")] }
 
     # assert
-    assert_equal [["POST", "/reveals"], ["DELETE", "/reveals/:id"], ["POST", "/actions/:action_key"]].sort, writing.sort
+    assert_equal [["POST", "/reveals"], ["DELETE", "/reveals"], ["DELETE", "/reveals/:id"], ["POST", "/actions/:action_key"]].sort, writing.sort
   end
 end
