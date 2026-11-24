@@ -1,4 +1,5 @@
-<% if allowed?(:reveal, { tenant: current_tenant }) %>
+<% categories = revealable_categories %>
+<% if categories.any? %>
   <% reveals = current_reveals %>
   <% minutes = (Lucid::Backoffice.configuration.reveal_duration / 60).to_i %>
   <% scope_id = current_tenant && tenancy.identifier(current_tenant) %>
@@ -21,7 +22,7 @@
           <h2><%= title %></h2>
           <p><%= t("lucid_backoffice.reveal_explainer", minutes: minutes) %></p>
           <div class="lb-reveal-categories">
-            <% (Lucid::Backoffice.configuration.categories - ["public"]).each do |category| %><span class="lb-tag"><%= category %></span><% end %>
+            <% categories.each do |category| %><span class="lb-tag"><%= category %></span><% end %>
           </div>
           <%= hidden_field_tag :tenant_id, scope_id if scope_id %>
           <label for="lb-reveal-reason"><%= t("lucid_backoffice.reason") %></label>

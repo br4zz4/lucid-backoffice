@@ -8,7 +8,7 @@
       <% if allowed?(:view_tenant, { tenant: current_tenant }) %>
         <a href="<%= overview %>"<%= raw ' aria-current="page"' if lb_current?(overview) %>><%= t("lucid_backoffice.tenant_overview") %></a>
       <% end %>
-      <% if allowed?(:view_activity) %>
+      <% if allowed?(:view_activity, { tenant: current_tenant }) %>
         <% activity = lb_routes.tenant_activity_path(tenant_id: tenant_id) %>
         <a href="<%= activity %>"<%= raw ' aria-current="page"' if lb_current?(activity) %>><%= t("lucid_backoffice.activity") %></a>
       <% end %>
@@ -16,7 +16,7 @@
       <% if allowed?(:view_dashboard) %>
         <a href="<%= lb_root_path %>"<%= raw ' aria-current="page"' if lb_current?(lb_root_path) %>><%= t("lucid_backoffice.overview") %></a>
       <% end %>
-      <% if allowed?(:view_activity) %>
+      <% if allowed?(:view_activity, { tenant: current_tenant }) %>
         <a href="<%= lb_routes.activity_path %>"<%= raw ' aria-current="page"' if lb_current?(lb_routes.activity_path) %>><%= t("lucid_backoffice.activity") %></a>
       <% end %>
       <% lucid_backoffice_menu.each do |item| %>

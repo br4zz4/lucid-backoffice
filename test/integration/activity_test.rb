@@ -296,6 +296,85 @@ class ActivityIntegrationTest < PanelTest
     assert_response :forbidden
   end
 
+  def deny_activity_for_beta
+    create_tenant_schemas
+    @contexts = []
+    contexts = @contexts
+    configure_panel(permissions: {}, tenancy: FakeTenancy.new) do |config|
+      config.authorize = lambda do |_operator, permission, context|
+        contexts << context if permission == :view_activity
+        next true unless permission == :view_activity
+
+        context[:tenant]&.code != "beta"
+      end
+    end
+  end
+
+  def test_tenant_activity_authorizes_view_activity_per_tenant
+    # arrange
+    deny_activity_for_beta
+    create_event(name: "a.alfa", tenant_identifier: "alfa")
+
+    # act
+    get "/backoffice/tenants/alfa/activity", headers: as(1)
+    alfa = response.status
+    get "/backoffice/tenants/beta/activity", headers: as(1)
+
+    # assert
+    assert_equal 200, alfa
+    assert_response :forbidden
+  end
+
+  def test_tenant_activity_passes_the_tenant_object_in_the_context
+    # arrange
+    deny_activity_for_beta
+
+    # act
+    get "/backoffice/tenants/alfa/activity", headers: as(1)
+
+    # assert
+    assert_includes @contexts.map { |context| context[:tenant]&.code }, "alfa"
+  end
+
+  def test_shared_activity_authorizes_with_a_nil_tenant
+    # arrange
+    deny_activity_for_beta
+
+    # act
+    get "/backoffice/activity", headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_includes @contexts, { tenant: nil }
+  end
+
+  def test_activity_shows_the_tenant_column_and_filter_with_multi_tenancy
+    # arrange
+    create_tenant_schemas
+    configure_panel(permissions: { 1 => %i[view_activity] }, tenancy: FakeTenancy.new)
+    create_event
+
+    # act
+    get "/backoffice/activity", headers: as(1)
+
+    # assert
+    assert_includes dom.css("th").map { |th| th.text.strip }, I18n.t("lucid_backoffice.tenant")
+    assert_equal 1, dom.css("input[name=tenant]").size
+  end
+
+  def test_activity_hides_the_tenant_column_and_filter_without_tenancy
+    # arrange
+    create_event
+
+    # act
+    get "/backoffice/activity", headers: as(1)
+
+    # assert
+    refute_includes dom.css("th").map { |th| th.text.strip }, I18n.t("lucid_backoffice.tenant")
+    assert_empty dom.css("input[name=tenant]")
+    assert_empty dom.css("[name=tenant]")
+  end
+
   def test_tenant_activity_for_an_unknown_tenant_is_not_found
     # arrange
     configure_tenant_activity

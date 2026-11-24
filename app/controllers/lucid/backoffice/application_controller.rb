@@ -18,7 +18,7 @@ module Lucid
       end
 
       helper_method :current_operator, :allowed?, :lucid_backoffice_menu, :tenancy, :current_tenant, :lb_routes,
-                    :lb_root_path, :lb_context_crumbs, :current_reveals, :context_label, :context_schema, :context_tables, :context_switch_tenants, :table_link, :lb_current?
+                    :lb_root_path, :lb_context_crumbs, :current_reveals, :context_label, :context_schema, :context_tables, :context_switch_tenants, :table_link, :lb_current?, :revealable_categories
 
       private
 
@@ -66,6 +66,12 @@ module Lucid
         crumbs
       end
 
+      def revealable_categories
+        (Lucid::Backoffice.configuration.categories - [Classification::PUBLIC]).select do |category|
+          allowed?(:reveal, { tenant: current_tenant, category: category })
+        end
+      end
+
       def context_label
         return tenancy.label(current_tenant) if current_tenant
 
@@ -93,7 +99,9 @@ module Lucid
       end
 
       def lb_current?(path, prefix: false)
-        prefix ? request.path.start_with?(path) : request.path.sub(%r{/\z}, "") == path
+        current = request.path.sub(%r{/\z}, "")
+        target = path.sub(%r{/\z}, "")
+        prefix ? (current == target || current.start_with?("#{target}/")) : current == target
       end
 
       def current_tenant

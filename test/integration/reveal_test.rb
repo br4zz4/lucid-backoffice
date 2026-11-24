@@ -458,4 +458,47 @@ class RevealIntegrationTest < PanelTest
     assert_includes response.body, SECRETS[:email]
     %i[password_digest api_token otp_secret encrypted_phone].each { |column| refute_includes response.body, SECRETS[column] }
   end
+
+  def test_delete_collection_ends_the_reveals_even_when_authorize_now_denies_reveal
+    # arrange
+    reveal_all
+    configure_tenants(permissions: {}) { |config| config.authorize = ->(_operator, permission, _context) { permission != :reveal } }
+
+    # act
+    revoke_all
+
+    # assert
+    assert_equal 302, response.status
+    assert_equal 0, Lucid::Backoffice::Reveal.active.count
+    assert_equal revealable_categories.size, events("backoffice.reveal.revoke").size
+  end
+
+  def test_delete_collection_ends_the_reveals_when_authorize_compares_the_tenant_object
+    # arrange
+    reveal_all
+    configure_tenants(permissions: {}) do |config|
+      config.authorize = ->(_operator, permission, context) { permission == :reveal ? context[:tenant]&.code == "never" : true }
+    end
+
+    # act
+    revoke_all
+
+    # assert
+    assert_equal 0, Lucid::Backoffice::Reveal.active.count
+  end
+
+  def test_delete_collection_without_reveal_permission_leaves_other_operators_and_tenants
+    # arrange
+    reveal_all(operator: 1, tenant: "alfa")
+    reveal_all(operator: 1, tenant: "beta", referer: "/backoffice/tenants/beta/data/students")
+    reveal_all(operator: 2, tenant: "alfa")
+    configure_tenants(permissions: {}) { |config| config.authorize = ->(_operator, permission, _context) { permission != :reveal } }
+
+    # act
+    revoke_all(operator: 1, tenant: "alfa")
+
+    # assert
+    active = Lucid::Backoffice::Reveal.active.pluck(:operator_id, :tenant_identifier).tally
+    assert_equal({ [1, "beta"] => revealable_categories.size, [2, "alfa"] => revealable_categories.size }, active)
+  end
 end

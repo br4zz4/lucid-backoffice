@@ -20,7 +20,7 @@ users:
   role: public
 ```
 
-Open `/backoffice/data/users`: `role` is in the clear, `email` and `name` show `•••••`, and a column nobody classified shows `•••••` too. An operator with the `reveal` permission reveals `contact` for 15 minutes by giving a reason; the reveal and the reason are recorded.
+Open `/backoffice/data/users`: `role` is in the clear, `email` and `name` show `•••••`, and a column nobody classified shows `•••••` too. An operator with the `reveal` permission clicks the eye in the top bar and, with a reason, reveals every category they may see for 15 minutes; the reveal and the reason are recorded.
 
 From 0.2 it also writes, only through declared [actions](docs/actions.md), and lets an operator [impersonate](docs/impersonation.md) a user read-only.
 

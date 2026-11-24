@@ -39,16 +39,21 @@ module Lucid
           transaction { categories.map { |category| grant(operator: operator, tenant: tenant, category: category, reason: reason) } }
         end
 
-        # Ends every active reveal of the operator in this tenant.
+        # Ends every active reveal of the operator in this tenant. Masking again never needs the permission
+        # to reveal, and it only touches the operator's own reveals.
         # @return [Array<Reveal>]
         def revoke_all(operator:, tenant: nil)
           scope = active.where(operator_type: operator.class.name, operator_id: operator.id, tenant_identifier: tenant_identifier(tenant))
-          transaction { scope.order(:id).map { |reveal| revoke(reveal, operator: operator) } }
+          transaction { scope.order(:id).map { |reveal| end_reveal(reveal, operator) } }
         end
 
         # Ends a reveal now, so the next request masks again.
         def revoke(reveal, operator:)
           Authorization.authorize!(operator, :reveal, { tenant: reveal.tenant_identifier, category: reveal.category })
+          end_reveal(reveal, operator)
+        end
+
+        def end_reveal(reveal, operator)
           transaction do
             reveal.update!(revoked_at: Time.current) unless reveal.revoked_at
             Activity.record(name: "backoffice.reveal.revoke", payload: { category: reveal.category }, actor: operator)

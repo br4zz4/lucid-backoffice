@@ -556,6 +556,87 @@ class RevealTest < DataTest
     assert_equal revealable.sort, Reveal.categories_for(operator: operator_b).sort
   end
 
+  def forbid_reveal_everywhere
+    configure_minimal { |config| config.authorize = ->(*) { false } }
+  end
+
+  def test_revoke_all_does_not_need_the_reveal_permission
+    # arrange
+    allow_all
+    operator = Operator.new(1)
+    grant_all(operator, tenant: "school_a")
+    forbid_reveal_everywhere
+
+    # act
+    Reveal.revoke_all(operator: operator, tenant: "school_a")
+
+    # assert
+    assert_empty Reveal.categories_for(operator: operator, tenant: "school_a")
+    assert_equal revealable.size, events("backoffice.reveal.revoke").size
+  end
+
+  def test_revoke_all_works_when_only_some_categories_are_still_allowed
+    # arrange
+    allow_all
+    operator = Operator.new(1)
+    grant_all(operator)
+    deny_categories("contact", "documents")
+
+    # act
+    Reveal.revoke_all(operator: operator)
+
+    # assert
+    assert_equal 0, Reveal.active.count
+    assert_equal revealable.sort, events("backoffice.reveal.revoke").map { |event| event.payload["category"] }.sort
+  end
+
+  def test_revoke_all_never_consults_authorize_with_the_tenant_as_an_object
+    # arrange
+    allow_all
+    operator = Operator.new(1)
+    grant_all(operator, tenant: "school_a")
+    configure_minimal { |config| config.authorize = ->(_operator, _permission, context) { context[:tenant].code == "school_a" } }
+
+    # act
+    Reveal.revoke_all(operator: operator, tenant: "school_a")
+
+    # assert
+    assert_equal 0, Reveal.active.count
+  end
+
+  def test_revoke_all_without_permission_still_isolates_operator_and_tenant
+    # arrange
+    allow_all
+    mine = Operator.new(1)
+    other = Operator.new(2)
+    grant_all(mine, tenant: "school_a")
+    grant_all(mine, tenant: "school_b")
+    grant_all(other, tenant: "school_a")
+    forbid_reveal_everywhere
+
+    # act
+    Reveal.revoke_all(operator: mine, tenant: "school_a")
+
+    # assert
+    assert_empty Reveal.categories_for(operator: mine, tenant: "school_a")
+    assert_equal revealable.sort, Reveal.categories_for(operator: mine, tenant: "school_b").sort
+    assert_equal revealable.sort, Reveal.categories_for(operator: other, tenant: "school_a").sort
+  end
+
+  def test_revoke_by_record_still_requires_the_reveal_permission_after_a_revoke_all_change
+    # arrange
+    allow_all
+    operator = Operator.new(1)
+    reveal = grant(operator)
+    forbid_reveal_everywhere
+
+    # act
+    assert_raises(Lucid::Backoffice::Error::Forbidden) { Reveal.revoke(reveal, operator: operator) }
+
+    # assert
+    assert_nil reveal.reload.revoked_at
+  end
+
   def test_revoke_all_without_active_reveals_records_nothing
     # arrange
     allow_all
