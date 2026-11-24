@@ -384,7 +384,7 @@ Decisões de implementação:
   - com `submit` `link`, chama `User::GenerateSetPasswordLink` no corpo e devolve `success(resource: user, set_password_url:)`;
   - com `submit` `email`, devolve `success(resource: user)` e envia em `after_commit` via `User::SendPasswordReset.call(user:)`. Uma exceção ali é capturada no hook e enviada a `Rails.error.report` (Sentry), sem desfazer a criação.
 - **`Actions::GenerateSetPasswordLink`** (`on :users`, registro, label "Gerar link de definição de senha", `perform with: User::GenerateSetPasswordLink`, `secret { |result| result[:set_password_url] }`). Não é CRUD, por isso é uma Action própria, como `SendPasswordReset`.
-- **`classrooms`**, exemplo do padrão sem Command: Resource novo `Resources::Classrooms` com `creatable :grade_id, :shift_id`, `editable :shift_id` e `destroyable`. A exclusão é recusada pelo `restrict_with_error` quando há matrículas.
+- **`classrooms`**, exemplo do padrão sem Command: Resource novo `Resources::Classrooms` com `creatable :grade_id, :shift_id`, `editable :shift_id` e `destroyable`. A exclusão remove a turma (`Classroom` não tem dependentes; o `has_many :enrollments` que ela declarava apontava para uma coluna inexistente e foi removido). A recusa pelo model é coberta na gem com `gadgets`/`parts`.
 - `SysadminAbility` sem mudança: o superadmin já tem tudo, e o `support` não recebe `create_record`, `update_record`, `destroy_record` nem `run_action`. Um teste garante isso.
 - `config/initializers/lucid_backoffice.rb` sem mudança: o default de `email_available` cobre o luneta (Resend via `:smtp` com `smtp.resend.com` em staging/production, `SMTP_HOST` em development, e `localhost` quando falta a chave).
 **Arquivos:**
