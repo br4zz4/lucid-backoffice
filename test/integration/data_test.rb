@@ -1152,6 +1152,73 @@ class DataIntegrationTest < PanelTest
     assert_includes dom.at_css(".lb-flash-warn").text, "search"
   end
 
+  def test_filter_popover_has_visible_labels_tied_to_the_select_and_the_input
+    # arrange
+    classify_and_reveal
+    insert_student
+
+    # act
+    get LIST, headers: as(1)
+    menu = dom.at_css("details.lb-menu")
+    column_label = menu.at_css("label[for=lb-filter-column]")
+    value_label = menu.at_css("label[for=lb-filter-value]")
+
+    # assert
+    assert column_label
+    assert value_label
+    assert_equal label(:filter_column), column_label.text.strip
+    assert_equal label(:filter_value), value_label.text.strip
+    assert_equal "select", menu.at_css("#lb-filter-column").name
+    assert_equal "input", menu.at_css("#lb-filter-value").name
+    assert_nil menu.at_css("#lb-filter-column")["aria-label"]
+    assert_nil menu.at_css("#lb-filter-value")["aria-label"]
+  end
+
+  def test_filter_popover_submit_says_apply_filter
+    # arrange
+    classify_and_reveal
+    insert_student
+
+    # act
+    get LIST, headers: as(1)
+    submit = dom.at_css("details.lb-menu button[type=submit], details.lb-menu input[type=submit]")
+
+    # assert
+    assert submit
+    assert_equal label(:apply_filter), (submit["value"] || submit.text).strip
+  end
+
+  def test_search_field_and_submit_share_the_query_form_and_the_label_has_a_magnifier
+    # arrange
+    classify_and_reveal
+    insert_student
+
+    # act
+    get LIST, headers: as(1)
+    form = dom.at_css("form.lb-query-form")
+    search = form.at_css("input[type=search]")
+    submit = form.css("button[type=submit], input[type=submit]").find { |node| (node["value"] || node.text).strip == label(:search) }
+
+    # assert
+    assert search
+    assert submit
+    assert form.at_css("label.lb-search svg")
+    assert_includes form.css("label.lb-search input[type=search]").map { |node| node["name"] }, search["name"]
+  end
+
+  def test_apply_filter_locale_key_exists_in_both_languages
+    # arrange
+    key = "lucid_backoffice.apply_filter"
+
+    # act
+    missing = %i[en pt-BR].reject { |locale| I18n.exists?(key, locale) }
+
+    # assert
+    assert_empty missing
+    assert_equal "Aplicar filtro", I18n.t(key, locale: :"pt-BR")
+    assert_equal "Apply filter", I18n.t(key, locale: :en)
+  end
+
   def test_query_bar_has_no_duplicate_ids
     # arrange
     classify_and_reveal
