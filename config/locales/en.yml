@@ -51,6 +51,11 @@ en:
     related: Related
     add_filter: "+ Filter"
     apply_filter: "Apply filter"
+    unlock_field: "Unlock"
+    set_new_value: "Set new value"
+    unlock_failed: "Could not unlock the field"
+    show_value: "Show value"
+    hide_value: "Hide value"
     remove_filter: "Remove filter %{name}"
     filter_column: Column
     filter_value: Value

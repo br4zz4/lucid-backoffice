@@ -184,10 +184,11 @@ module Lucid
       end
 
       # @return [Hash{Symbol => Object}] what the form starts with: the declared default, or the current
-      #   value of the record attribute named like the field. A field over a masked column starts as
-      #   {Field::LOCKED}, never with the value. A required field must still be submitted.
-      def initial_values(revealed: [])
-        locked = locked_names(revealed: revealed)
+      #   value of the record attribute named like the field. A field over a column that is not public starts as
+      #   {Field::LOCKED}, never with the value, whether or not the operator has a Reveal. A required field
+      #   must still be submitted.
+      def initial_values
+        locked = locked_names
         self.class.fields.to_h do |name, field|
           next [name, Field::LOCKED] if locked.include?(name)
 
@@ -196,29 +197,50 @@ module Lucid
         end
       end
 
-      # @return [Array<Symbol>] the fields over a column of the record's table that is neither public nor
-      #   revealed. Without a record (collection, tenant or global action) nothing is locked.
-      def locked_names(revealed: [])
+      # @return [Array<Symbol>] the fields over a column of the record's table that is not public. Without a
+      #   record (collection, tenant or global action) nothing is locked.
+      def locked_names
         table = self.class.target
         return [] if record.nil? || table.nil? || %w[tenant global].include?(table)
 
         self.class.fields.keys.select do |name|
-          next false unless record.respond_to?(name)
-          next true if hidden_column?(table, name)
-
-          category = Classification.category_for(table, name)
-          category != Classification::PUBLIC && !Array(revealed).include?(category)
+          record.respond_to?(name) && (hidden_column?(table, name) || Classification.category_for(table, name) != Classification::PUBLIC)
         end
+      end
+
+      # @return [Symbol, nil] +:read+ when unlocking reads the current value (a masked column), +:write+ when it
+      #   only lets a new one be written (a hidden column), +nil+ when the field is not locked
+      def unlock_mode(name)
+        return nil unless locked_names.include?(name.to_sym)
+
+        hidden_column?(self.class.target, name) ? :write : :read
+      end
+
+      # @return [String, nil] the category the operator needs to reveal to unlock the field for reading
+      def unlock_category(name)
+        Classification.category_for(self.class.target, name) if unlock_mode(name) == :read
       end
 
       def hidden_column?(table, name)
         name.to_s.match?(Lucid::Backoffice.configuration.secret_columns) || Resource.for(table)&.hidden&.include?(name.to_s) || false
       end
 
-      # Params with the locked fields replaced by the record's current value, read on the server.
-      def with_locked_current(params, revealed: [])
-        locked_names(revealed: revealed).each_with_object(params.to_h.with_indifferent_access) do |name, result|
-          result[name] = record.public_send(name)
+      private def unlock_accepted?(name, opened, submitted, operator)
+        return false unless opened.include?(name.to_s)
+
+        case unlock_mode(name)
+        when :write then submitted.present?
+        when :read then operator && Authorization.allowed?(operator, :reveal, { tenant: tenant, category: unlock_category(name) })
+        end
+      end
+
+      # Params with the locked fields replaced by the record's current value, read on the server. A locked field
+      # keeps what was submitted only when it came listed in +unlocked+, the operator may reveal its category
+      # and, for a hidden column, the new value is not blank.
+      def with_locked_current(params, unlocked: [], operator: nil)
+        opened = Array(unlocked).map(&:to_s)
+        locked_names.each_with_object(params.to_h.with_indifferent_access) do |name, result|
+          result[name] = record.public_send(name) unless unlock_accepted?(name, opened, result[name], operator)
         end
       end
 

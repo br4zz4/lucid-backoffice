@@ -71,7 +71,7 @@ class EditableTest < ActionTest
     path = write_yaml(PROFILES_CLASSIFICATION)
     configure_minimal do |config|
       config.classification_path = path
-      config.authorize = ->(_operator, permission, _context) { %i[run_action update_record].include?(permission) }
+      config.authorize = ->(_operator, permission, _context) { %i[run_action update_record reveal].include?(permission) }
     end
   end
 
@@ -145,7 +145,7 @@ class EditableTest < ActionTest
     action = editable_resource(:name, :city).editable_action
 
     # act
-    result = run_action(action, record: profile, params: { name: "Bia", city: "Olinda", secret_code: "hacked" })
+    result = run_action(action, record: profile, params: { name: "Bia", city: "Olinda", secret_code: "hacked" }, unlocked: %w[name])
 
     # assert
     assert_equal :ok, result.status
@@ -159,7 +159,7 @@ class EditableTest < ActionTest
     action = editable_resource(:name, :city).editable_action
 
     # act
-    result = run_action(action, record: profile, params: { name: "Bia", city: "" })
+    result = run_action(action, record: profile, params: { name: "Bia", city: "" }, unlocked: %w[name])
 
     # assert
     assert_equal :ok, result.status
@@ -173,8 +173,7 @@ class EditableTest < ActionTest
     action = editable_resource(:age, :active, :born_on, :bio).editable_action
 
     # act
-    result = run_action(action, record: profile, params: { age: "41", active: "1", born_on: "2001-02-03", bio: "novo" },
-                        revealed: %w[contact free_text])
+    result = run_action(action, record: profile, params: { age: "41", active: "1", born_on: "2001-02-03", bio: "novo" }, unlocked: %w[bio])
 
     # assert
     assert_equal :ok, result.status
@@ -248,7 +247,7 @@ class EditableTest < ActionTest
     action = editable_resource(:name, :city, with: Profiles::Update).editable_action
 
     # act
-    result = run_action(action, record: profile, params: { name: "Bia", city: "Olinda" })
+    result = run_action(action, record: profile, params: { name: "Bia", city: "Olinda" }, unlocked: %w[name])
 
     # assert
     assert_equal :ok, result.status

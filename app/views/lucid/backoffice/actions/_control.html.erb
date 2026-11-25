@@ -1,0 +1,19 @@
+<% if field.partial %>
+  <%= render field.partial, field: field, value: value, action: action %>
+<% else %>
+  <% case field.type %>
+  <% when :select %>
+    <% options = Array(field.choices.respond_to?(:call) ? action.instance_exec(&field.choices) : field.choices) %>
+    <%= select_tag "fields[#{field.name}]", options_for_select(options, value), id: "fields_#{field.name}", include_blank: !field.required %>
+  <% when :boolean %>
+    <%= check_box_tag "fields[#{field.name}]", "1", value, id: "fields_#{field.name}" %>
+  <% when :text %>
+    <%= text_area_tag "fields[#{field.name}]", value, id: "fields_#{field.name}" %>
+  <% when :integer, :record %>
+    <%= number_field_tag "fields[#{field.name}]", value, id: "fields_#{field.name}", step: 1 %>
+  <% when :date %>
+    <%= date_field_tag "fields[#{field.name}]", value, id: "fields_#{field.name}" %>
+  <% else %>
+    <%= text_field_tag "fields[#{field.name}]", value, id: "fields_#{field.name}" %>
+  <% end %>
+<% end %>

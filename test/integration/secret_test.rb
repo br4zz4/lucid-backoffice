@@ -5,7 +5,7 @@ class SecretIntegrationTest < PanelTest
   ACTIONS = "/backoffice/actions".freeze
   REASON = "investigar chamado 123".freeze
   SECRET = "SEGREDO-UNICO-9f3a7c".freeze
-  OPERATOR = { 1 => %i[run_action browse view_dashboard view_tenant] }.freeze
+  OPERATOR = { 1 => %i[run_action reveal browse view_dashboard view_tenant] }.freeze
 
   def setup
     super
@@ -49,10 +49,10 @@ class SecretIntegrationTest < PanelTest
   def create_account = Account.create!(role: "teacher", nickname: "Mia", level: 1)
 
   def submit(account, key: "issue_link")
-    get "#{ACTIONS}/#{key}/new", params: { record_id: account.id, fields: { role: "coordinator" } }, headers: as(1)
+    get "#{ACTIONS}/#{key}/new", params: { record_id: account.id, fields: { role: "coordinator" }, unlocked: %w[role] }, headers: as(1)
     snapshot = dom.at_css("input[name=snapshot]")["value"]
     nonce = dom.at_css("input[name=nonce]")&.[]("value")
-    @last_params = { record_id: account.id, fields: { role: "coordinator" }, snapshot: snapshot, reason: REASON, nonce: nonce }.compact
+    @last_params = { record_id: account.id, fields: { role: "coordinator" }, unlocked: %w[role], snapshot: snapshot, reason: REASON, nonce: nonce }.compact
     post "#{ACTIONS}/#{key}", params: @last_params, headers: as(1)
   end
 
@@ -247,7 +247,7 @@ class SecretIntegrationTest < PanelTest
     account = create_account
 
     # act
-    get "#{ACTIONS}/issue_link/new", params: { record_id: account.id, fields: { role: "coordinator" } }, headers: as(1)
+    get "#{ACTIONS}/issue_link/new", params: { record_id: account.id, fields: { role: "coordinator" }, unlocked: %w[role] }, headers: as(1)
 
     # assert
     assert_predicate dom.at_css("input[type=hidden][name=nonce]")["value"].to_s, :present?
@@ -334,12 +334,12 @@ class SecretIntegrationTest < PanelTest
       secret { |_value| "outro" }
     end
     account = create_account
-    get "#{ACTIONS}/issue_link/new", params: { record_id: account.id, fields: { role: "coordinator" } }, headers: as(1)
+    get "#{ACTIONS}/issue_link/new", params: { record_id: account.id, fields: { role: "coordinator" }, unlocked: %w[role] }, headers: as(1)
     nonce = dom.at_css("input[name=nonce]")["value"]
     snapshot = dom.at_css("input[name=snapshot]")["value"]
 
     # act
-    post "#{ACTIONS}/#{other.key}", params: { record_id: account.id, fields: { role: "coordinator" }, snapshot: snapshot, reason: REASON, nonce: nonce },
+    post "#{ACTIONS}/#{other.key}", params: { record_id: account.id, fields: { role: "coordinator" }, unlocked: %w[role], snapshot: snapshot, reason: REASON, nonce: nonce },
                                     headers: as(1)
 
     # assert
@@ -359,11 +359,11 @@ class SecretIntegrationTest < PanelTest
       end
     end
     account = create_account
-    get "#{ACTIONS}/#{plain.key}/new", params: { record_id: account.id, fields: { role: "coordinator" } }, headers: as(1)
+    get "#{ACTIONS}/#{plain.key}/new", params: { record_id: account.id, fields: { role: "coordinator" }, unlocked: %w[role] }, headers: as(1)
     snapshot = dom.at_css("input[name=snapshot]")["value"]
 
     # act
-    post "#{ACTIONS}/#{plain.key}", params: { record_id: account.id, fields: { role: "coordinator" }, snapshot: snapshot, reason: REASON },
+    post "#{ACTIONS}/#{plain.key}", params: { record_id: account.id, fields: { role: "coordinator" }, unlocked: %w[role], snapshot: snapshot, reason: REASON },
                                     headers: as(1)
 
     # assert

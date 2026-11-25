@@ -59,6 +59,11 @@ pt-BR:
     related: Relacionados
     add_filter: "+ Filtro"
     apply_filter: "Aplicar filtro"
+    unlock_field: "Liberar edição"
+    set_new_value: "Definir novo valor"
+    unlock_failed: "Não foi possível liberar o campo"
+    show_value: "Mostrar valor"
+    hide_value: "Ocultar valor"
     remove_filter: "Remover filtro %{name}"
     filter_column: Coluna
     filter_value: Valor

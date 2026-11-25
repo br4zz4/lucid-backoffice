@@ -29,6 +29,7 @@ class ActionsIntegrationTest < PanelTest
   ACTIONS = "/backoffice/actions".freeze
   REASON = "investigar chamado 123".freeze
   OPERATOR = { 1 => %i[run_action browse view_dashboard view_tenant], 2 => %i[browse view_dashboard view_tenant] }.freeze
+  REVEALING_OPERATOR = { 1 => %i[run_action reveal browse view_dashboard view_tenant], 2 => OPERATOR.fetch(2) }.freeze
   DEFAULT_CATEGORY_REVEAL = "contact".freeze
 
   def setup
@@ -87,13 +88,17 @@ class ActionsIntegrationTest < PanelTest
     post "#{ACTIONS}/#{key}", params: params, headers: as(operator)
   end
 
-  def role_preview(account, role: "coordinator", key: "change_user_role")
-    open_preview(key, { record_id: account.id, fields: { role: role } })
+  def role_preview(account, role: "coordinator", key: "change_user_role", unlocked: nil)
+    params = { record_id: account.id, fields: { role: role } }
+    params[:unlocked] = unlocked if unlocked
+    open_preview(key, params)
     snapshot_value
   end
 
-  def role_submission(account, snapshot, role: "coordinator", **overrides)
-    { record_id: account.id, fields: { role: role }, snapshot: snapshot, reason: REASON }.merge(overrides)
+  def role_submission(account, snapshot, role: "coordinator", unlocked: nil, **overrides)
+    params = { record_id: account.id, fields: { role: role }, snapshot: snapshot, reason: REASON }
+    params[:unlocked] = unlocked if unlocked
+    params.merge(overrides)
   end
 
   def action_events = events("backoffice.action.change_user_role")
@@ -125,16 +130,19 @@ class ActionsIntegrationTest < PanelTest
   def test_new_shows_the_field_filled_with_the_current_value
     # arrange
     configure_actions
-    grant_contact_reveal
-    role_action
-    account = create_account(role: "teacher")
+    define_action("ChangeNickname") do
+      on :accounts
+      field :nickname, :select, choices: -> { %w[Mia Zoe] }
+      perform { record.update!(nickname: nickname) }
+    end
+    account = create_account(nickname: "Mia")
 
     # act
-    open_preview("change_user_role", { record_id: account.id })
+    open_preview("change_nickname", { record_id: account.id })
 
     # assert
     assert_response :ok
-    assert_equal "teacher", dom.at_css("select[name='fields[role]'] option[selected]")["value"]
+    assert_equal "Mia", dom.at_css("select[name='fields[nickname]'] option[selected]")["value"]
   end
 
   def test_new_shows_no_preview_until_values_are_submitted
@@ -186,7 +194,7 @@ class ActionsIntegrationTest < PanelTest
     assert_nil dom.at_css("select[name='fields[role]']")
   end
 
-  def test_new_unlocks_the_field_when_the_category_is_revealed
+  def test_new_keeps_the_field_locked_when_the_category_is_revealed
     # arrange
     configure_actions
     role_action
@@ -197,8 +205,10 @@ class ActionsIntegrationTest < PanelTest
     open_preview("change_user_role", { record_id: account.id })
 
     # assert
-    assert_nil dom.at_css("input#fields_role[disabled]")
-    assert_equal "teacher", dom.at_css("select[name='fields[role]'] option[selected]")["value"]
+    locked = dom.at_css("input#fields_role")
+    refute_includes response.body, "teacher"
+    assert_equal [MASKED, "disabled", nil], [locked["value"], locked["disabled"], locked["name"]]
+    assert_nil dom.css("select[name='fields[role]']").find { |node| node.ancestors("template").none? }
   end
 
   def test_post_discards_the_value_sent_for_a_locked_field
@@ -215,15 +225,15 @@ class ActionsIntegrationTest < PanelTest
     assert_equal "teacher", account.reload.role
   end
 
-  def test_new_with_values_reveals_the_preview_when_the_category_was_revealed
+  def test_new_with_values_reveals_the_preview_when_the_category_was_revealed_and_the_field_unlocked
     # arrange
-    configure_actions
+    configure_actions(permissions: REVEALING_OPERATOR)
     role_action
     account = create_account(role: "teacher")
     grant_contact_reveal
 
     # act
-    open_preview("change_user_role", { record_id: account.id, fields: { role: "coordinator" } })
+    open_preview("change_user_role", { record_id: account.id, fields: { role: "coordinator" }, unlocked: %w[role] })
 
     # assert
     assert_includes preview_section.text, "teacher"
@@ -335,14 +345,14 @@ class ActionsIntegrationTest < PanelTest
 
   def test_post_with_reason_and_matching_snapshot_writes_and_records_the_event
     # arrange
-    configure_actions
+    configure_actions(permissions: REVEALING_OPERATOR)
     grant_contact_reveal
     role_action
     account = create_account(role: "teacher")
-    snapshot = role_preview(account)
+    snapshot = role_preview(account, unlocked: %w[role])
 
     # act
-    submit_action("change_user_role", role_submission(account, snapshot))
+    submit_action("change_user_role", role_submission(account, snapshot, unlocked: %w[role]))
 
     # assert
     assert_response :redirect
@@ -383,17 +393,17 @@ class ActionsIntegrationTest < PanelTest
 
   def test_post_success_with_redirect_to_goes_to_the_url_with_the_notice
     # arrange
-    configure_actions
+    configure_actions(permissions: REVEALING_OPERATOR)
     grant_contact_reveal
     role_action do
       result { notice "feito" }
       redirect_to { |_value| "/backoffice/records/destino" }
     end
     account = create_account
-    snapshot = role_preview(account)
+    snapshot = role_preview(account, unlocked: %w[role])
 
     # act
-    submit_action("change_user_role", role_submission(account, snapshot))
+    submit_action("change_user_role", role_submission(account, snapshot, unlocked: %w[role]))
 
     # assert
     assert_redirected_to "/backoffice/records/destino"
@@ -614,14 +624,14 @@ class ActionsIntegrationTest < PanelTest
 
   def test_danger_high_with_the_right_confirmation_passes
     # arrange
-    configure_actions
+    configure_actions(permissions: REVEALING_OPERATOR)
     grant_contact_reveal
     role_action { danger :high }
     account = create_account(role: "teacher")
-    snapshot = role_preview(account)
+    snapshot = role_preview(account, unlocked: %w[role])
 
     # act
-    submit_action("change_user_role", role_submission(account, snapshot, confirmation: account.id.to_s))
+    submit_action("change_user_role", role_submission(account, snapshot, unlocked: %w[role], confirmation: account.id.to_s))
 
     # assert
     assert_response :redirect
@@ -642,7 +652,7 @@ class ActionsIntegrationTest < PanelTest
 
   def test_transaction_false_performs_outside_a_transaction_and_records_the_event_after
     # arrange
-    configure_actions
+    configure_actions(permissions: REVEALING_OPERATOR)
     grant_contact_reveal
     seen = []
     role_action do
@@ -651,10 +661,10 @@ class ActionsIntegrationTest < PanelTest
     end
     account = create_account(role: "teacher")
     baseline = ActiveRecord::Base.lease_connection.open_transactions
-    snapshot = role_preview(account)
+    snapshot = role_preview(account, unlocked: %w[role])
 
     # act
-    submit_action("change_user_role", role_submission(account, snapshot))
+    submit_action("change_user_role", role_submission(account, snapshot, unlocked: %w[role]))
 
     # assert
     assert_equal [baseline], seen
@@ -770,15 +780,15 @@ class ActionsIntegrationTest < PanelTest
 
   def test_post_with_csrf_token_is_accepted
     # arrange
-    configure_actions
+    configure_actions(permissions: REVEALING_OPERATOR)
     grant_contact_reveal
     role_action
     account = create_account(role: "teacher")
 
     # act
     with_forgery_protection do
-      snapshot = role_preview(account)
-      submit_action("change_user_role", role_submission(account, snapshot, authenticity_token: csrf_token))
+      snapshot = role_preview(account, unlocked: %w[role])
+      submit_action("change_user_role", role_submission(account, snapshot, unlocked: %w[role], authenticity_token: csrf_token))
     end
 
     # assert
@@ -1415,14 +1425,14 @@ class ActionsIntegrationTest < PanelTest
 
   def test_action_without_submit_ignores_a_submit_param
     # arrange
-    configure_actions
+    configure_actions(permissions: REVEALING_OPERATOR)
     grant_contact_reveal
     role_action
     account = create_account
-    snapshot = role_preview(account)
+    snapshot = role_preview(account, unlocked: %w[role])
 
     # act
-    submit_action("change_user_role", role_submission(account, snapshot, submit: "email"))
+    submit_action("change_user_role", role_submission(account, snapshot, unlocked: %w[role], submit: "email"))
 
     # assert
     assert_response :redirect

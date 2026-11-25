@@ -20,7 +20,7 @@ end unless defined?(Profile)
 class EditableIntegrationTest < PanelTest
   ACTIONS = "/backoffice/actions".freeze
   REASON = "corrigir cadastro 77".freeze
-  PERMISSIONS = { 1 => %i[run_action update_record create_record destroy_record browse view_dashboard view_tenant],
+  PERMISSIONS = { 1 => %i[run_action update_record create_record destroy_record browse view_dashboard view_tenant reveal],
                   2 => %i[browse view_dashboard view_tenant] }.freeze
   DATA = "/backoffice/data".freeze
   CLASSIFICATION = <<~YAML.freeze
@@ -110,18 +110,18 @@ class EditableIntegrationTest < PanelTest
     assert_equal REASON, events("backoffice.action.edit_profiles").sole.reason
   end
 
-  def test_revealed_name_shows_the_preview_in_clear_and_post_writes_it_with_event
+  def test_unlocked_name_shows_the_revealed_preview_in_clear_and_post_writes_it_with_event
     # arrange
     configure_profiles
     profile = create_profile
     grant_contact_reveal
-    get "#{ACTIONS}/edit_profiles/new", params: { record_id: profile.id, fields: { name: "Bia", city: "Olinda" } }, headers: as(1)
+    get "#{ACTIONS}/edit_profiles/new", params: { record_id: profile.id, fields: { name: "Bia", city: "Olinda" }, unlocked: %w[name] }, headers: as(1)
     snapshot = snapshot_value
     preview = dom.at_css("section.lb-section").text
 
     # act
     post "#{ACTIONS}/edit_profiles", params: { record_id: profile.id, fields: { name: "Bia", city: "Olinda", secret_code: "hacked", age: 99 },
-                                               snapshot: snapshot, reason: REASON }, headers: as(1)
+                                               unlocked: %w[name], snapshot: snapshot, reason: REASON }, headers: as(1)
 
     # assert
     assert_includes preview, "Ana → Bia"
@@ -137,11 +137,11 @@ class EditableIntegrationTest < PanelTest
     configure_profiles
     profile = create_profile
     grant_contact_reveal
-    get "#{ACTIONS}/edit_profiles/new", params: { record_id: profile.id, fields: { name: "Bia", city: "" } }, headers: as(1)
+    get "#{ACTIONS}/edit_profiles/new", params: { record_id: profile.id, fields: { name: "Bia", city: "" }, unlocked: %w[name] }, headers: as(1)
     snapshot = snapshot_value
 
     # act
-    post "#{ACTIONS}/edit_profiles", params: { record_id: profile.id, fields: { name: "Bia", city: "" }, snapshot: snapshot, reason: REASON }, headers: as(1)
+    post "#{ACTIONS}/edit_profiles", params: { record_id: profile.id, fields: { name: "Bia", city: "" }, unlocked: %w[name], snapshot: snapshot, reason: REASON }, headers: as(1)
 
     # assert
     assert_response :redirect

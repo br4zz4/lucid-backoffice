@@ -9,13 +9,13 @@ module Lucid
         # @param action_class [Class<Action>]
         # @param snapshot [String] the digest shown with the preview
         # @param confirmation [String] what the operator typed for a `danger :high` action
-        def call(action_class, operator:, reason:, snapshot:, record: nil, tenant: nil, params: {}, confirmation: nil, revealed: [], submit: nil)
+        def call(action_class, operator:, reason:, snapshot:, record: nil, tenant: nil, params: {}, confirmation: nil, unlocked: [], submit: nil)
           context = { tenant: tenant, record: record, action: action_class.key }
           return failed(:forbidden, "not allowed") unless Authorization.allowed?(operator, action_class.permission, context)
 
           action = action_class.new(record: record, tenant: tenant, params: params, reason: reason&.to_s&.strip, submit: submit)
           action = action_class.new(record: record, tenant: tenant, reason: reason&.to_s&.strip, submit: submit,
-                                    params: action.with_locked_current(params, revealed: revealed))
+                                    params: action.with_locked_current(params, unlocked: unlocked, operator: operator))
           reason = reason.to_s.strip
           minimum = Lucid::Backoffice.configuration.reveal_reason_min
           return failed(:invalid, "reason must have at least #{minimum} characters") if reason.length < minimum
@@ -43,7 +43,11 @@ module Lucid
           name = "backoffice.action.#{action_class.key}"
           value = nil
           if action_class.transaction
-            value = Activity.track(name, reason: reason, undo_on_failure: !action_class.perform_with) { action.execute }
+            value = Activity.track(name, reason: reason, undo_on_failure: !action_class.perform_with) do |tracker|
+              result = action.execute
+              tracker.subject(action.record) if action.record.is_a?(ActiveRecord::Base)
+              result
+            end
           else
             value = action.execute
             Activity.record(name: name, outcome: failure_of(value) || "ok", reason: reason)
