@@ -41,6 +41,44 @@ class LayoutIntegrationTest < PanelTest
     end
   end
 
+  CONTAINING_BLOCK_PROPERTIES = %w[backdrop-filter -webkit-backdrop-filter filter -webkit-filter transform perspective contain will-change].freeze
+  SIDEBAR_ANCESTOR_SELECTOR = /\A(header)?\.lb-(topbar|topbar-right|sidebar-toggle)(\[[^\]]*\]|:[a-z-]+(\([^)]*\))?)*\z/
+
+  def sidebar_ancestor_declarations
+    source = File.read(File.expand_path("../../app/assets/lucid_backoffice.css", __dir__)).gsub(%r{/\*.*?\*/}m, "")
+    source.scan(/([^{}]+)\{([^{}]*)\}/).flat_map do |selectors, body|
+      next [] unless selectors.split(",").any? { |selector| selector.strip.match?(SIDEBAR_ANCESTOR_SELECTOR) }
+
+      body.split(";").filter_map do |declaration|
+        property = declaration.split(":", 2).first.to_s.strip.downcase
+        "#{selectors.strip}: #{property}" if CONTAINING_BLOCK_PROPERTIES.include?(property)
+      end
+    end
+  end
+
+  def test_css_never_makes_a_sidebar_ancestor_a_containing_block_for_fixed_descendants
+    # arrange
+    offenders = nil
+
+    # act
+    offenders = sidebar_ancestor_declarations
+
+    # assert
+    assert_empty offenders, "the fixed sidebar lives inside .lb-topbar; these declarations turn the ancestor into its containing block"
+  end
+
+  def test_sidebar_is_rendered_inside_the_topbar
+    # arrange
+    configure_multi
+
+    # act
+    get "/backoffice", headers: as(1)
+
+    # assert
+    assert dom.at_css("header.lb-topbar aside.lb-sidebar"), "aside.lb-sidebar must be a descendant of header.lb-topbar"
+    assert dom.at_css("header.lb-topbar details.lb-sidebar-toggle aside.lb-sidebar")
+  end
+
   def test_shared_context_card_shows_shared_label_and_schema_name
     # arrange
     configure_multi
