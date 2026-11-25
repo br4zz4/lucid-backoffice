@@ -122,6 +122,46 @@ class ActionPreviewTest < ActionTest
     assert_equal %w[teacher coordinator], [change.before, change.after]
   end
 
+  def test_masked_flags_only_revealed_non_public_changes
+    # arrange
+    configure_actions
+    preview = preview()
+    account = create_account(role: "teacher", level: 1)
+    preview.change(account, :role, to: "coordinator")
+    preview.change(account, :level, to: 2)
+
+    # act
+    changes = preview.masked(revealed: ["contact"])
+
+    # assert
+    assert_equal [true, false], changes.map(&:revealed)
+  end
+
+  def test_masked_does_not_flag_a_category_that_was_not_revealed
+    # arrange
+    configure_actions
+    preview = preview()
+    preview.change(create_account(role: "teacher"), :role, to: "coordinator")
+
+    # act
+    flags = [preview.masked.first.revealed, preview.masked(revealed: ["financial"]).first.revealed]
+
+    # assert
+    assert_equal [false, false], flags
+  end
+
+  def test_change_is_created_as_not_revealed
+    # arrange
+    configure_actions
+    preview = preview()
+
+    # act
+    preview.change(create_account(role: "teacher"), :role, to: "coordinator")
+
+    # assert
+    assert_equal false, preview.changes.first.revealed
+  end
+
   def test_masked_ignores_a_reveal_of_another_category
     # arrange
     configure_actions

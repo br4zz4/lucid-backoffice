@@ -238,6 +238,7 @@
 .lb-action-form .lb-button:disabled { opacity: .6; }
 .lb-action-form h2, .lb-action-form h3 { margin: .5rem 0 0; }
 
+.lb-expired [data-lb-revealed] { filter: blur(6px); user-select: none; pointer-events: none; }
 .lb-query { gap: .6rem; }
 .lb-query-form { align-items: center; }
 .lb-search { position: relative; display: block; }

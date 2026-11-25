@@ -1,7 +1,7 @@
 <% content = cell.value.nil? ? "—" : cell.value %>
 <% if cell.link %>
   <% href = current_tenant ? tenant_record_path(tenant_id: tenancy.identifier(current_tenant), table: cell.link[:table], id: cell.link[:id]) : record_path(table: cell.link[:table], id: cell.link[:id]) %>
-  <a class="lb-value lb-fk" href="<%= href %>" title="<%= cell.link[:table] %>"><%= content %></a>
+  <a class="lb-value lb-fk" href="<%= href %>" title="<%= cell.link[:table] %>"<%= raw " data-lb-revealed" if cell.revealed %>><%= content %></a>
 <% else %>
-  <span class="lb-value<%= " lb-masked" if cell.masked %>" title="<%= cell.masked ? t("lucid_backoffice.masked") : "" %>"><%= content %></span>
+  <span class="lb-value<%= " lb-masked" if cell.masked %>" title="<%= cell.masked ? t("lucid_backoffice.masked") : "" %>"<%= raw " data-lb-revealed" if cell.revealed %>><%= content %></span>
 <% end %>

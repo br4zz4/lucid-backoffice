@@ -231,6 +231,34 @@ class RevealEyeIntegrationTest < PanelTest
     assert eye_dialog
   end
 
+  def test_ending_an_active_reveal_keeps_the_ended_notice
+    # arrange
+    configure_multi
+    grant("contact")
+
+    # act
+    delete "/backoffice/reveals", params: { tenant_id: "alfa" }, headers: as(1)
+    follow_redirect!(headers: as(1))
+
+    # assert
+    assert_equal label(:revoked), dom.at_css(".lb-flash-ok").text.strip
+  end
+
+  def test_ending_without_an_active_reveal_redirects_without_notice_or_event
+    # arrange
+    configure_multi
+
+    # act
+    delete "/backoffice/reveals", params: { tenant_id: "alfa" }, headers: as(1)
+    status = response.status
+    follow_redirect!(headers: as(1))
+
+    # assert
+    assert_equal 302, status
+    assert_empty dom.css(".lb-flash-ok")
+    assert_empty events("backoffice.reveal.revoke")
+  end
+
   def test_shared_context_is_named_home
     # arrange
     configure_multi

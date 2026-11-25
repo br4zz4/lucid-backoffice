@@ -230,6 +230,61 @@ class ActionsIntegrationTest < PanelTest
     assert_includes preview_section.text, "coordinator"
   end
 
+  def configure_three_categories
+    path = write_yaml("accounts:\n  role: contact\n  nickname: documents\n  level: public\n")
+    configure_panel(permissions: OPERATOR) { |config| config.classification_path = path }
+  end
+
+  def mixed_preview_action
+    role_action do
+      preview do |p|
+        p.change(record, :role, to: "coordinator")
+        p.change(record, :nickname, to: "Zoe")
+        p.change(record, :level, to: 2)
+      end
+    end
+  end
+
+  def preview_spans
+    dom.css("section.lb-section p").to_h { |line| [line.at_css("strong").text.split.last, line.css("span.lb-value")] }
+  end
+
+  def test_preview_marks_revealed_values_and_masks_the_rest_by_their_real_state
+    # arrange
+    configure_three_categories
+    grant_contact_reveal
+    mixed_preview_action
+    account = create_account(role: "teacher", nickname: "Mia", level: 1)
+
+    # act
+    open_preview("change_user_role", { record_id: account.id, fields: { role: "coordinator" } })
+    spans = preview_spans
+
+    # assert
+    assert_equal 2, spans["role"].size
+    assert spans["role"].all? { |span| span.key?("data-lb-revealed") && !span["class"].split.include?("lb-masked") }
+    assert_equal 2, spans["nickname"].size
+    assert spans["nickname"].all? { |span| span["class"].split.include?("lb-masked") && !span.key?("data-lb-revealed") }
+    assert_equal 2, spans["level"].size
+    assert spans["level"].all? { |span| !span["class"].split.include?("lb-masked") && !span.key?("data-lb-revealed") }
+  end
+
+  def test_preview_without_a_reveal_has_no_revealed_marks
+    # arrange
+    configure_three_categories
+    mixed_preview_action
+    account = create_account(role: "teacher", nickname: "Mia", level: 1)
+
+    # act
+    open_preview("change_user_role", { record_id: account.id, fields: { role: "coordinator" } })
+    spans = preview_spans
+
+    # assert
+    assert_empty preview_section.css("[data-lb-revealed]")
+    assert spans["role"].all? { |span| span["class"].split.include?("lb-masked") }
+    assert spans["level"].none? { |span| span["class"].split.include?("lb-masked") }
+  end
+
   def test_new_with_values_carries_the_snapshot_in_a_hidden_field
     # arrange
     configure_actions

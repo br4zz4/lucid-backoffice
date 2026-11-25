@@ -21,7 +21,8 @@
       <%= hidden_field_tag "criteria[sort]", query.sort, id: nil %>
       <%= hidden_field_tag "criteria[dir]", query.dir, id: nil %>
       <% def_filters.except(name).each do |other, other_value| %><%= hidden_field_tag "criteria[filters][#{other}]", other_value, id: nil %><% end %>
-      <span><%= name %> = <%= value %></span>
+      <% filtered = usable.find { |column| column.name == name } %>
+      <span<%= raw " data-lb-revealed" if filtered && filtered.category != Lucid::Backoffice::Classification::PUBLIC %>><%= name %> = <%= value %></span>
       <%= button_tag "✕", type: "submit", class: "lb-chip-remove", "aria-label": t("lucid_backoffice.remove_filter", name: name) %>
     <% end %>
   <% end %>

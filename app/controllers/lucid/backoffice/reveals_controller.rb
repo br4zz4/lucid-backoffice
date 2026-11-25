@@ -13,8 +13,8 @@ module Lucid
       def destroy_all
         tenant = params[:tenant_id].presence && (tenancy.find(params[:tenant_id]) || raise(Records::NotFound, "no tenant"))
         Current.tenant_identifier = Reveal.tenant_identifier(tenant)
-        Reveal.revoke_all(operator: current_operator, tenant: tenant)
-        redirect_back fallback_location: lucid_backoffice_root_path, notice: I18n.t("lucid_backoffice.revoked")
+        ended = Reveal.revoke_all(operator: current_operator, tenant: tenant)
+        redirect_back fallback_location: lucid_backoffice_root_path, notice: (I18n.t("lucid_backoffice.revoked") if ended.any?)
       end
 
       private

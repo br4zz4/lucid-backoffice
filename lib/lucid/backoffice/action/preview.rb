@@ -5,7 +5,9 @@ module Lucid
     class Action
       # What an action is about to change, before and after. Values stay raw inside and leave masked.
       class Preview
-        Change = Data.define(:label, :before, :after, :category)
+        Change = Data.define(:label, :before, :after, :category, :revealed) do
+          def initialize(label:, before:, after:, category:, revealed: false) = super
+        end
         Listing = Data.define(:title, :items)
 
         attr_reader :changes, :listings
@@ -35,7 +37,7 @@ module Lucid
         def masked(revealed: [])
           changes.map do |c|
             open = revealed.include?(c.category)
-            Change.new(label: c.label, category: c.category,
+            Change.new(label: c.label, category: c.category, revealed: open && c.category != Classification::PUBLIC,
                        before: Mask.call(value: c.before, category: c.category, column_type: type_of(c.before), revealed: open),
                        after: Mask.call(value: c.after, category: c.category, column_type: type_of(c.after), revealed: open))
           end
