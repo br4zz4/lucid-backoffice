@@ -6,6 +6,8 @@ en:
     reveal_explainer: "Shows in clear, for %{minutes} minutes, every category you may reveal here. The reason is recorded in the activity trail."
     revealed_until: "Revealed until %{time}"
     end_reveal_all: End
+    revealed_running: "Revealed · %{time}"
+    reveal_expired: Expired
     cancel: Cancel
     more_actions: Actions
     records_count:

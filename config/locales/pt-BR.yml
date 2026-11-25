@@ -14,6 +14,8 @@ pt-BR:
     reveal_explainer: "Mostra em claro, por %{minutes} minutos, todas as categorias que você pode revelar aqui. O motivo fica registrado na atividade."
     revealed_until: "Revelado até %{time}"
     end_reveal_all: Encerrar
+    revealed_running: "Revelado · %{time}"
+    reveal_expired: Expirado
     cancel: Cancelar
     more_actions: Ações
     records_count:

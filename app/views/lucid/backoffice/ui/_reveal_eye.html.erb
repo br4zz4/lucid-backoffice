@@ -5,9 +5,12 @@
   <% scope_id = current_tenant && tenancy.identifier(current_tenant) %>
   <% if reveals.any? %>
     <% until_time = reveals.map(&:expires_at).min %>
-    <%= button_to lb_routes.reveals_all_path, method: :delete, params: { tenant_id: scope_id }.compact, class: "lb-eye lb-eye-on", title: t("lucid_backoffice.end_reveal_all"), form_class: "button_to lb-eye-form" do %>
+    <% remaining = [(until_time - Time.current).ceil, 0].max %>
+    <% clock = t("lucid_backoffice.revealed_until", time: l(until_time, format: "%H:%M")) %>
+    <%= button_to lb_routes.reveals_all_path, method: :delete, params: { tenant_id: scope_id }.compact, class: "lb-eye lb-eye-on", title: clock, form_class: "button_to lb-eye-form",
+                  data: { lb_countdown: true, lb_remaining: remaining, lb_label_running: t("lucid_backoffice.revealed_running", time: "%{time}"), lb_label_expired: t("lucid_backoffice.reveal_expired") } do %>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
-      <span><%= t("lucid_backoffice.revealed_until", time: l(until_time, format: "%H:%M")) %></span>
+      <span data-lb-countdown-label><%= clock %></span>
       <span class="lb-eye-end"><%= t("lucid_backoffice.end_reveal_all") %></span>
     <% end %>
   <% else %>
