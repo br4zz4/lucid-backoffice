@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- **Fix:** the Action form carries the `authenticity_token`. It is a GET form whose execute button posts (`formmethod: :post`), and Rails adds no token to GET forms, so every Action run answered 422 once forgery protection was on.
+
 ## 0.4.0
 
 Manage data in the panel: search, filter and sort by the columns the operator can read, follow foreign keys, and create, edit or delete records the app declared, always as an Action (reason, preview, permission, event).
