@@ -475,6 +475,88 @@ class RevealEyeIntegrationTest < PanelTest
     assert_match(/\.lb \.lb-sidebar \.lb-nav-main a[^{]*\{[^}]*border-radius/m, css)
   end
 
+  def test_active_eye_exposes_countdown_data_for_the_earliest_expiry
+    # arrange
+    configure_multi
+    soonest = grant("contact", expires_in: 10.minutes)
+    grant("documents", expires_in: 14.minutes)
+
+    # act
+    get "/backoffice/tenants/alfa", headers: as(1)
+
+    # assert
+    assert_includes eye["class"].split, "lb-eye-on"
+    assert eye.key?("data-lb-countdown")
+    assert_in_delta 600, eye["data-lb-remaining"].to_i, 2
+    assert_equal label(:revealed_running, time: "%{time}"), eye["data-lb-label-running"]
+    assert_includes eye["data-lb-label-running"], "%{time}"
+    assert_equal label(:reveal_expired), eye["data-lb-label-expired"]
+    assert_equal label(:revealed_until, time: clock(soonest.reload.expires_at)), eye["title"]
+  end
+
+  def test_active_eye_text_without_js_stays_revealed_until
+    # arrange
+    configure_multi
+    soonest = grant("contact", expires_in: 10.minutes)
+    grant("documents", expires_in: 14.minutes)
+
+    # act
+    get "/backoffice/tenants/alfa", headers: as(1)
+
+    # assert
+    countdown_label = eye.at_css("[data-lb-countdown-label]")
+    assert countdown_label
+    assert_equal label(:revealed_until, time: clock(soonest.reload.expires_at)), countdown_label.text.squish
+  end
+
+  def test_countdown_locale_keys_exist_in_both_languages
+    # arrange
+    keys = %w[revealed_running reveal_expired]
+
+    # act
+    missing = %i[en pt-BR].flat_map do |locale|
+      keys.reject { |key| I18n.exists?("lucid_backoffice.#{key}", locale) }.map { |key| "#{locale}.#{key}" }
+    end
+
+    # assert
+    assert_empty missing
+  end
+
+  def test_countdown_locale_values
+    # arrange / act
+    values = {
+      "pt-BR running" => I18n.t("lucid_backoffice.revealed_running", locale: :"pt-BR", time: "01:02"),
+      "pt-BR expired" => I18n.t("lucid_backoffice.reveal_expired", locale: :"pt-BR"),
+      "en running" => I18n.t("lucid_backoffice.revealed_running", locale: :en, time: "01:02"),
+      "en expired" => I18n.t("lucid_backoffice.reveal_expired", locale: :en)
+    }
+
+    # assert
+    assert_equal(
+      { "pt-BR running" => "Revelado · 01:02", "pt-BR expired" => "Expirado", "en running" => "Revealed · 01:02", "en expired" => "Expired" },
+      values
+    )
+  end
+
+  def test_js_asset_has_the_countdown_and_dirty_guard
+    # arrange
+    source = File.read(File.expand_path("../../app/assets/lucid_backoffice.js", __dir__))
+
+    # act / assert
+    assert_includes source, "data-lb-countdown"
+    assert_includes source, "lbDirty"
+    assert_includes source, "lb-expired"
+  end
+
+  def test_css_asset_styles_the_warn_and_expired_eye
+    # arrange
+    source = File.read(File.expand_path("../../app/assets/lucid_backoffice.css", __dir__))
+
+    # act / assert
+    assert_includes source, ".lb-eye-warn"
+    assert_includes source, ".lb-eye-expired"
+  end
+
   def test_new_locale_keys_exist_in_both_languages
     # arrange
     keys = %w[masked_data reveal_title_in reveal_all reveal_explainer revealed_until end_reveal_all cancel]
