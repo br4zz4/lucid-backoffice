@@ -3,13 +3,55 @@ require "test_helper"
 class BackofficeReleaseTest < Minitest::Test
   ROOT = File.expand_path("../../..", __dir__)
 
-  def test_version_is_0_4_1
+  def test_version_is_semver_at_least_0_4_0
     # arrange
     # act
     version = Lucid::Backoffice::VERSION
 
     # assert
-    assert_equal "0.4.1", version
+    assert_match(/\A\d+\.\d+\.\d+\z/, version)
+    assert_operator Gem::Version.new(version), :>=, Gem::Version.new("0.4.0")
+  end
+
+  def test_version_is_0_5_0
+    # arrange
+    # act
+    version = Lucid::Backoffice::VERSION
+
+    # assert
+    assert_equal "0.5.0", version
+  end
+
+  def test_changelog_has_the_breaking_section_in_0_5_0_mentioning_unlocked
+    # arrange
+    changelog = File.read(File.join(ROOT, "CHANGELOG.md"))
+
+    # act
+    section = changelog[/^## 0\.5\.0\n(.*?)(?=^## |\z)/m, 1]
+    breaking = section && section[/^### Breaking\n(.*?)(?=^### |\z)/m, 1]
+
+    # assert
+    assert section, "CHANGELOG.md has no section for 0.5.0"
+    assert breaking, "0.5.0 has no ### Breaking section"
+    assert_includes breaking, "unlocked"
+  end
+
+  def test_docs_describe_the_field_unlock
+    # arrange
+    expectations = {
+      "docs/security.md" => ["POST /actions/:action_key/fields/:field/unlock"],
+      "docs/masking-and-reveals.md" => %w[unlock countdown],
+      "docs/actions.md" => %w[Unlock]
+    }
+
+    # act
+    missing = expectations.flat_map do |path, terms|
+      content = File.read(File.join(ROOT, path))
+      terms.reject { |term| content.include?(term) }.map { |term| "#{path}: #{term}" }
+    end
+
+    # assert
+    assert_empty missing
   end
 
   def test_changelog_has_the_breaking_section_in_0_4_0

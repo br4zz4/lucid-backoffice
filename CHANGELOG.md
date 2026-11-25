@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+
+A finished look for the panel, a countdown on the reveal, and one-field-at-a-time unlocking in Action forms (ADR 0002).
+
+- **Look:** forms, sections and tables as cards with a violet glow behind a black panel; focus rings, a chevron on selects, glass on the sidebar and top bar. The sidebar's current item is plain text on a soft background (no border, no bar), table names are truncated with the full name as `title`, and the "Data" heading is sans, not mono. Search has a magnifier and Enter submits; the "+ Filter" popover has visible Column and Value labels and an "Apply filter" button; filter chips look like tags.
+- **Countdown:** the eye shows `Revealed · mm:ss` (the time it ends is its `title`), from the seconds the server reports (`data-lb-remaining`), amber in the last minute. At zero a clean page sends the eye's own `DELETE /reveals` and comes back masked, without a notice; a page with unsaved edits keeps them, shows `Expired` in red and blurs what was shown as revealed until the operator masks again. Without JavaScript it still reads `Revealed until HH:MM`.
+- **Revealed marks:** the server marks every value it shows revealed with `data-lb-revealed` (table cells, record detail, Action previews, filter chips). The Action preview no longer masks revealed values by default.
+- **Unlock:** a field over a column that is not public starts locked in Action forms, with or without a reveal. "Unlock" (a masked column) reads the current value through `POST /actions/:action_key/fields/:field/unlock` (`no-store`), needs the `:reveal` permission of the category and records `backoffice.field.unlock` (table, column, record, action; no value, no reason). A `secret` or hidden column only offers "Set new value": the current value is never read. After leaving the field the value is hidden again, with an eye to peek.
+- **Actions record what they changed:** the event of an Action over a record now carries the record as subject and the names (never the values) of the attributes it changed.
+
+### Breaking
+
+- A Reveal no longer unlocks Action form fields. A submitted value for a locked field is used only when the field is listed in `unlocked[]` and the operator may reveal its category (a hidden column also needs a non-blank value); otherwise the current value is used.
+- `Action#initial_values` and `Action#locked_names` no longer take `revealed:`; `Action#with_locked_current` takes `unlocked:` and `operator:`; `Action::Runner.call` takes `unlocked:` instead of `revealed:`.
+- `Records::Cell` and `Action::Preview::Change` gain a `revealed` attribute (default `false`).
+- `DELETE /reveals` with nothing to end no longer shows the "Reveal ended" notice.
+
 ## 0.4.1
 
 - **Fix:** the Action form carries the `authenticity_token`. It is a GET form whose execute button posts (`formmethod: :post`), and Rails adds no token to GET forms, so every Action run answered 422 once forgery protection was on.
