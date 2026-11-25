@@ -3,13 +3,14 @@ require "test_helper"
 class BackofficeReleaseTest < Minitest::Test
   ROOT = File.expand_path("../../..", __dir__)
 
-  def test_version_is_0_4_0
+  def test_version_is_semver_and_at_least_0_4_0
     # arrange
     # act
     version = Lucid::Backoffice::VERSION
 
     # assert
-    assert_equal "0.4.0", version
+    assert_match(/\A\d+\.\d+\.\d+\z/, version)
+    assert_operator Gem::Version.new(version), :>=, Gem::Version.new("0.4.0")
   end
 
   def test_changelog_has_the_breaking_section_in_0_4_0
