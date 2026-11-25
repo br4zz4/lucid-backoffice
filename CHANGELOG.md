@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+- **Fix:** the top bar no longer has a `backdrop-filter`. The sidebar is `position: fixed` inside the top bar, and any filter on an ancestor turns that into the top bar's own box, which squeezed the sidebar into it and let the breadcrumb show through. The top bar is a solid black again; the sidebar keeps its glass.
+
 ## 0.5.1
 
 Fixes found reviewing 0.5.0.
