@@ -6,13 +6,11 @@ module Lucid
       before_action :load_action
 
       def new
-        authorize!(@action_class.permission, context)
-        tenancy.with(current_tenant) do
-          @record = find_record
-          @action = @action_class.new(record: @record, tenant: current_tenant, params: field_params)
-          @initial = @action.initial_values
-          prepare_preview
-        end
+        show_form
+      end
+
+      def preview
+        show_form
       end
 
       def unlock
@@ -56,6 +54,17 @@ module Lucid
       end
 
       private
+
+      def show_form
+        authorize!(@action_class.permission, context)
+        tenancy.with(current_tenant) do
+          @record = find_record
+          @action = @action_class.new(record: @record, tenant: current_tenant, params: field_params)
+          @initial = @action.initial_values
+          prepare_preview
+        end
+        render :new
+      end
 
       def load_action
         @action_class = Action.for_key(params[:action_key]) || raise(Records::NotFound, "no such action")
@@ -136,7 +145,8 @@ module Lucid
       end
 
       def prepare_preview
-        @locked = @action.locked_names
+        @unlocked = @action.accepted_unlocks(field_params, unlocked: unlocked_params, operator: current_operator)
+        @locked = @action.locked_names - @unlocked
         @reason = @action.unavailable_reason
         return if @reason
         return unless params.key?(:fields) || @action_class.fields.empty?

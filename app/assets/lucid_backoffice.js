@@ -53,7 +53,12 @@ function lbDirty(root) {
     var type = (field.getAttribute("type") || "").toLowerCase();
     if (type === "hidden" || type === "submit" || type === "button") { return false; }
     if (field.tagName === "SELECT") {
-      return Array.prototype.some.call(field.options, function (option) { return option.selected !== option.defaultSelected; });
+      if (field.multiple) {
+        return Array.prototype.some.call(field.options, function (option) { return option.selected !== option.defaultSelected; });
+      }
+      var base = 0;
+      for (var i = 0; i < field.options.length; i++) { if (field.options[i].defaultSelected) { base = i; break; } }
+      return field.selectedIndex !== base;
     }
     if (type === "checkbox" || type === "radio") { return field.checked !== field.defaultChecked; }
     return field.value !== field.defaultValue;
@@ -67,14 +72,16 @@ document.addEventListener("DOMContentLoaded", function () {
     var deadline = performance.now() + parseInt(eye.getAttribute("data-lb-remaining"), 10) * 1000;
     var running = eye.getAttribute("data-lb-label-running");
     var timer = null;
+    var done = false;
     var pad = function (n) { return n < 10 ? "0" + n : String(n); };
     var tick = function () {
       var left = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
       label.textContent = running.replace("%{time}", pad(Math.floor(left / 60)) + ":" + pad(left % 60));
       eye.classList.toggle("lb-eye-warn", left <= 60);
-      if (left > 0) { return; }
+      if (left > 0 || done) { return; }
+      done = true;
       clearInterval(timer);
-      if (!lbDirty(document)) { form.requestSubmit(); return; }
+      if (!lbDirty(document)) { if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); } return; }
       document.documentElement.classList.add("lb-expired");
       eye.classList.remove("lb-eye-on", "lb-eye-warn");
       eye.classList.add("lb-eye-expired");
@@ -90,23 +97,44 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", function () {
   var eye = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
-  document.querySelectorAll("[data-lb-unlock]").forEach(function (box) {
+  document.querySelectorAll(".lb-locked-field").forEach(function (box) {
     var button = box.querySelector("[data-lb-unlock-button]");
+    if (!button) { return; }
     var template = box.querySelector("template[data-lb-control]");
     var field = box.getAttribute("data-lb-field");
     var label = button.querySelector("[data-lb-label]");
     var icon = button.querySelector("svg");
-    var control = null;
     var failure = null;
 
     var conceal = function (on) {
       box.classList.toggle("lb-concealed", on);
+      button.setAttribute("aria-pressed", on ? "false" : "true");
       label.textContent = button.getAttribute(on ? "data-lb-show" : "data-lb-hide");
     };
 
+    var arm = function (control) {
+      icon.innerHTML = eye;
+      button.onmousedown = function (event) { event.preventDefault(); };
+      button.onclick = function () {
+        var hidden = box.classList.contains("lb-concealed");
+        conceal(!hidden);
+        if (hidden) { control.focus(); }
+      };
+      control.addEventListener("focus", function () { conceal(false); });
+      box.addEventListener("focusout", function (event) {
+        if (!box.contains(event.relatedTarget)) { conceal(true); }
+      });
+    };
+
+    if (box.hasAttribute("data-lb-unlock-open")) {
+      arm(box.querySelector("input:not([type=hidden]), textarea, select"));
+      conceal(true);
+      return;
+    }
+
     var open = function (value) {
       var fragment = template.content.cloneNode(true);
-      control = fragment.querySelector("input, textarea, select");
+      var control = fragment.querySelector("input, textarea, select");
       if (value !== null && value !== undefined) {
         if (control.type === "checkbox") { control.checked = !!value; } else { control.value = value; }
       }
@@ -114,11 +142,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var flag = document.createElement("input");
       flag.type = "hidden"; flag.name = "unlocked[]"; flag.value = field;
       box.appendChild(flag);
-      icon.innerHTML = eye;
-      button.onclick = function () { conceal(!box.classList.contains("lb-concealed")); if (!box.classList.contains("lb-concealed")) { control.focus(); } };
-      box.addEventListener("focusout", function (event) {
-        if (!box.contains(event.relatedTarget)) { conceal(true); }
-      });
+      arm(control);
       conceal(false);
       control.focus();
     };
@@ -135,6 +159,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch(function () {
           failure = document.createElement("small");
           failure.className = "lb-unlock-failed";
+          failure.setAttribute("role", "alert");
           failure.textContent = button.getAttribute("data-lb-failed");
           box.appendChild(failure);
         })

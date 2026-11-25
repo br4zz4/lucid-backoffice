@@ -110,6 +110,63 @@ class FieldUnlockIntegrationTest < PanelTest
     post "#{ACTIONS}/#{key}", params: params, headers: as(operator)
   end
 
+  def preview(key, record, fields: nil, unlocked: nil, operator: 1)
+    params = { record_id: record.id }
+    params[:fields] = fields if fields
+    params[:unlocked] = unlocked if unlocked
+    post "#{ACTIONS}/#{key}/preview", params: params, headers: as(operator)
+  end
+
+  def action_form = dom.at_css("form.lb-action-form")
+
+  def form_pairs
+    nodes = action_form.css("input, textarea, select").reject { |node| node.ancestors("template").any? || node["disabled"] }
+    nodes.filter_map do |node|
+      name = node["name"]
+      type = node["type"].to_s.downcase
+      next if name.to_s.empty? || %w[submit button image].include?(type)
+      next if name == "tenant_id" && node["value"].to_s.empty?
+      next if %w[checkbox radio].include?(type) && !node.key?("checked")
+
+      value = if node.name == "select"
+        (node.at_css("option[selected]") || node.at_css("option"))&.[]("value").to_s
+      elsif node.name == "textarea"
+        node.text
+      else
+        node["value"].to_s
+      end
+      [name, value]
+    end
+  end
+
+  def run_from_dom(key, pairs)
+    body = URI.encode_www_form(pairs + [["reason", REASON]])
+    post "#{ACTIONS}/#{key}", params: body, headers: as(1)
+  end
+
+  def closed_wrapper(field) = dom.at_css(".lb-field:has(label[for=fields_#{field}]) .lb-locked-field:not([data-lb-unlock-open])")
+
+  def open_wrapper(field) = dom.at_css("div.lb-locked-field[data-lb-unlock-open]:has([name='fields[#{field}]'])")
+
+  def rejected_by_forgery_protection
+    post_status = nil
+    begin
+      yield
+      post_status = response.status
+    rescue ActionController::InvalidAuthenticityToken
+      post_status = 422
+    end
+    post_status
+  end
+
+  def swapping_activity_record(replacement)
+    original = Lucid::Backoffice::Activity.method(:record)
+    Lucid::Backoffice::Activity.define_singleton_method(:record, &replacement)
+    yield
+  ensure
+    Lucid::Backoffice::Activity.define_singleton_method(:record, original)
+  end
+
   def test_locked_field_stays_locked_with_the_category_revealed_and_leaks_nothing
     # arrange
     configure_unlock
@@ -459,5 +516,269 @@ class FieldUnlockIntegrationTest < PanelTest
     assert_includes names, "fields[nickname]"
     assert_response :redirect
     assert_equal [CURRENT, "Zoe"], account.reload.then { |a| [a.role, a.nickname] }
+  end
+
+  def test_preview_post_returns_the_unlocked_field_open_with_the_sent_value
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+
+    # act
+    preview("edit_accounts", account, fields: { role: NEW_VALUE, nickname: "Mia" }, unlocked: %w[role])
+
+    # assert
+    assert_response :ok
+    wrapper = open_wrapper("role")
+    assert wrapper
+    assert_equal NEW_VALUE, wrapper.at_css("[name='fields[role]']")["value"]
+    assert_equal "role", wrapper.at_css("input[type=hidden][name='unlocked[]']")["value"]
+    assert wrapper.at_css("[data-lb-unlock-button]")
+    assert_nil closed_wrapper("role")
+    assert_empty dom.css("input[disabled].lb-locked").select { |node| node.ancestors(".lb-field").any? { |field| field.at_css("label[for=fields_role]") } }
+  end
+
+  def test_preview_post_keeps_a_not_accepted_field_locked
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+
+    # act
+    preview("edit_accounts", account, fields: { role: "hacked", nickname: "Mia" }, unlocked: %w[role], operator: 2)
+
+    # assert
+    assert_response :ok
+    assert_nil open_wrapper("role")
+    assert closed_wrapper("role")
+    assert_empty live_controls("role")
+    refute_includes response.body, "hacked"
+  end
+
+  def test_preview_post_keeps_a_secret_field_locked_when_unlocked_with_a_blank_value
+    # arrange
+    configure_unlock
+    edit_gadgets
+    gadget = create_gadget
+
+    # act
+    preview("edit_gadgets", gadget, fields: { name: "Torno", secret_code: "", kind: "oculto-9" }, unlocked: %w[secret_code])
+
+    # assert
+    assert_response :ok
+    assert_nil open_wrapper("secret_code")
+    assert closed_wrapper("secret_code")
+  end
+
+  def test_preview_post_returns_a_secret_field_open_with_the_new_value
+    # arrange
+    configure_unlock
+    edit_gadgets
+    gadget = create_gadget
+
+    # act
+    preview("edit_gadgets", gadget, fields: { name: "Torno", secret_code: "NOVO-SEGREDO-1", kind: "oculto-9" }, unlocked: %w[secret_code])
+
+    # assert
+    wrapper = open_wrapper("secret_code")
+    assert wrapper
+    assert_equal "NOVO-SEGREDO-1", wrapper.at_css("[name='fields[secret_code]']")["value"]
+    assert_nil closed_wrapper("secret_code")
+    refute_includes response.body, SECRET
+  end
+
+  def test_unlocked_field_survives_preview_and_execution_through_the_dom
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+    preview("edit_accounts", account, fields: { role: NEW_VALUE, nickname: "Mia" }, unlocked: %w[role])
+
+    # act
+    pairs = form_pairs
+    run_from_dom("edit_accounts", pairs)
+
+    # assert
+    assert_includes pairs.map(&:first), "snapshot"
+    assert_includes pairs, ["unlocked[]", "role"]
+    assert_includes pairs, ["fields[role]", NEW_VALUE]
+    assert_response :redirect
+    assert_equal NEW_VALUE, account.reload.role
+    assert_equal 1, events("backoffice.action.edit_accounts").size
+  end
+
+  def test_secret_field_survives_preview_and_execution_through_the_dom
+    # arrange
+    configure_unlock
+    edit_gadgets
+    gadget = create_gadget
+    preview("edit_gadgets", gadget, fields: { name: "Torno", secret_code: "NOVO-SEGREDO-1", kind: "oculto-9" }, unlocked: %w[secret_code])
+
+    # act
+    pairs = form_pairs
+    run_from_dom("edit_gadgets", pairs)
+
+    # assert
+    assert_includes pairs, ["unlocked[]", "secret_code"]
+    assert_response :redirect
+    assert_equal "NOVO-SEGREDO-1", gadget.reload.secret_code
+  end
+
+  def test_action_form_posts_to_the_preview_endpoint_without_values_in_the_url
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+
+    # act
+    open_form("edit_accounts", account)
+
+    # assert
+    assert_equal "post", action_form["method"].downcase
+    assert action_form["action"].end_with?("/actions/edit_accounts/preview")
+    refute_includes action_form["action"], "?"
+    assert_empty action_form.css("input[name=authenticity_token]")
+  end
+
+  def test_action_form_has_a_single_native_authenticity_token_when_forgery_protection_is_on
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+
+    # act
+    with_forgery_protection { open_form("edit_accounts", account) }
+
+    # assert
+    assert_equal 1, action_form.css("input[name=authenticity_token]").size
+  end
+
+  def test_get_new_with_a_locked_field_exposes_no_value_in_the_html
+    # arrange
+    configure_unlock
+    edit_accounts
+    edit_gadgets
+    account = create_account
+    gadget = create_gadget
+    grant_contact_reveal
+
+    # act
+    open_form("edit_accounts", account)
+    account_body = response.body
+    open_form("edit_gadgets", gadget)
+
+    # assert
+    refute_includes account_body, CURRENT
+    refute_includes response.body, SECRET
+  end
+
+  def test_unlock_without_a_csrf_token_is_rejected_without_value_or_event
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+
+    # act
+    status = with_forgery_protection { rejected_by_forgery_protection { unlock("edit_accounts", account, "role") } }
+
+    # assert
+    assert_equal 422, status
+    assert_empty unlock_events
+  end
+
+  def test_unlock_with_a_valid_csrf_token_returns_the_value
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+
+    # act
+    with_forgery_protection do
+      open_form("edit_accounts", account)
+      token = csrf_token
+      post unlock_path("edit_accounts", "role"), params: { record_id: account.id },
+                                                 headers: as(1).merge("Accept" => "application/json", "X-CSRF-Token" => token)
+    end
+
+    # assert
+    assert_response :ok
+    assert_equal CURRENT, JSON.parse(response.body)["value"]
+    assert_equal 1, unlock_events.size
+  end
+
+  def test_preview_post_without_a_csrf_token_is_rejected
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+
+    # act
+    status = with_forgery_protection { rejected_by_forgery_protection { preview("edit_accounts", account, fields: { nickname: "Mia" }) } }
+
+    # assert
+    assert_equal 422, status
+  end
+
+  def test_preview_post_with_the_form_token_is_accepted
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+
+    # act
+    with_forgery_protection do
+      open_form("edit_accounts", account)
+      token = action_form.at_css("input[name=authenticity_token]")["value"]
+      post "#{ACTIONS}/edit_accounts/preview", params: { record_id: account.id, fields: { nickname: "Mia" }, authenticity_token: token }, headers: as(1)
+    end
+
+    # assert
+    assert_response :ok
+    assert action_form
+  end
+
+  def test_empty_tenant_id_is_treated_as_no_tenant_on_new_preview_and_run
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+
+    # act
+    get "#{ACTIONS}/edit_accounts/new", params: { record_id: account.id, tenant_id: "" }, headers: as(1)
+    new_status = response.status
+    post "#{ACTIONS}/edit_accounts/preview", params: { record_id: account.id, tenant_id: "", fields: { nickname: "Zoe" } }, headers: as(1)
+    preview_status = response.status
+    snapshot = snapshot_value
+    post "#{ACTIONS}/edit_accounts", params: { record_id: account.id, tenant_id: "", fields: { nickname: "Zoe" }, snapshot: snapshot, reason: REASON }, headers: as(1)
+
+    # assert
+    assert_equal 200, new_status
+    assert_equal 200, preview_status
+    assert_response :redirect
+    assert_equal "Zoe", account.reload.nickname
+  end
+
+  def test_unlock_fails_closed_when_the_event_cannot_be_recorded
+    # arrange
+    configure_unlock
+    edit_accounts
+    account = create_account
+    failing = proc { |**| raise ActiveRecord::StatementInvalid, "boom" }
+    body = nil
+
+    # act
+    swapping_activity_record(failing) do
+      begin
+        unlock("edit_accounts", account, "role")
+        body = response.body
+      rescue ActiveRecord::StatementInvalid
+        body = ""
+      end
+    end
+
+    # assert
+    refute_includes body, CURRENT
+    refute_equal 200, response.status unless body.empty?
+    assert_empty unlock_events
   end
 end

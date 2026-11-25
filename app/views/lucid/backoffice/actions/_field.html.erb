@@ -16,6 +16,15 @@
       <% end %>
     </div>
     <small class="lb-locked-note"><%= t("lucid_backoffice.locked_field") %></small>
+  <% elsif local_assigns.fetch(:unlocked, []).include?(field.name) %>
+    <div class="lb-locked-field lb-concealed" data-lb-unlock-open data-lb-field="<%= field.name %>">
+      <%= render "lucid/backoffice/actions/control", field: field, value: value, action: action %>
+      <%= hidden_field_tag "unlocked[]", field.name, id: nil %>
+      <button type="button" class="lb-button lb-button-quiet lb-unlock" data-lb-unlock-button data-lb-hide="<%= t("lucid_backoffice.hide_value") %>" data-lb-show="<%= t("lucid_backoffice.show_value") %>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
+        <span data-lb-label><%= t("lucid_backoffice.show_value") %></span>
+      </button>
+    </div>
   <% else %>
     <%= render "lucid/backoffice/actions/control", field: field, value: value, action: action %>
   <% end %>

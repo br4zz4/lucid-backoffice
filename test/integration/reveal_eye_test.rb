@@ -548,6 +548,16 @@ class RevealEyeIntegrationTest < PanelTest
     assert_includes source, "lb-expired"
   end
 
+  def test_js_asset_handles_selects_in_the_dirty_guard_and_has_the_submit_fallback_and_aria_pressed
+    # arrange
+    source = File.read(File.expand_path("../../app/assets/lucid_backoffice.js", __dir__))
+
+    # act / assert
+    assert_includes source, "selectedIndex"
+    assert_includes source, "form.submit()"
+    assert_includes source, "aria-pressed"
+  end
+
   def test_css_asset_styles_the_warn_and_expired_eye
     # arrange
     source = File.read(File.expand_path("../../app/assets/lucid_backoffice.css", __dir__))

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1
+
+Fixes found reviewing 0.5.0.
+
+- **Fix:** an unlocked field no longer gets lost between the preview and the execution, and no field value (an unlocked masked value, a new secret) nor the CSRF token reaches the URL: the preview is `POST /actions/:action_key/preview`, and a field the operator unlocked comes back open, hidden and with its value, ready to execute.
+- **Fix:** an Action form sent from a panel without a tenant answered 404, because the empty `tenant_id` hidden field was read as a tenant; a blank `tenant_id` now means no tenant.
+- **Fix:** the countdown no longer reads a page as edited just because a `<select>` has no explicit option, so the list pages mask again by themselves at zero; the hide-value button works on Safari and Firefox for macOS; the automatic `DELETE /reveals` is sent once (with a fallback for browsers without `requestSubmit`); the unlock error is announced and the show/hide toggle exposes `aria-pressed`.
+
 ## 0.5.0
 
 A finished look for the panel, a countdown on the reveal, and one-field-at-a-time unlocking in Action forms (ADR 0002).
@@ -8,7 +16,7 @@ A finished look for the panel, a countdown on the reveal, and one-field-at-a-tim
 - **Countdown:** the eye shows `Revealed · mm:ss` (the time it ends is its `title`), from the seconds the server reports (`data-lb-remaining`), amber in the last minute. At zero a clean page sends the eye's own `DELETE /reveals` and comes back masked, without a notice; a page with unsaved edits keeps them, shows `Expired` in red and blurs what was shown as revealed until the operator masks again. Without JavaScript it still reads `Revealed until HH:MM`.
 - **Revealed marks:** the server marks every value it shows revealed with `data-lb-revealed` (table cells, record detail, Action previews, filter chips). The Action preview no longer masks revealed values by default.
 - **Unlock:** a field over a column that is not public starts locked in Action forms, with or without a reveal. "Unlock" (a masked column) reads the current value through `POST /actions/:action_key/fields/:field/unlock` (`no-store`), needs the `:reveal` permission of the category and records `backoffice.field.unlock` (table, column, record, action; no value, no reason). A `secret` or hidden column only offers "Set new value": the current value is never read. After leaving the field the value is hidden again, with an eye to peek.
-- **Actions record what they changed:** the event of an Action over a record now carries the record as subject and the names (never the values) of the attributes it changed.
+- **Actions record what they changed:** the event of a transactional Action over a record now carries the record as subject and the names (never the values) of the attributes it changed.
 
 ### Breaking
 
