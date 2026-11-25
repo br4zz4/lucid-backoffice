@@ -160,6 +160,53 @@ class ActionsIntegrationTest < PanelTest
     assert_nil execute_button
   end
 
+  def test_preview_post_renders_the_same_page_as_get_new
+    # arrange
+    configure_actions
+    role_action
+    account = create_account
+    params = { record_id: account.id, fields: { role: "coordinator" } }
+    open_preview("change_user_role", params)
+    from_get = [dom.at_css("form.lb-action-form").css("input[name]").map { |node| node["name"] }.sort, preview_section.text.squish]
+
+    # act
+    post "#{ACTIONS}/change_user_role/preview", params: params, headers: as(1)
+
+    # assert
+    assert_response :ok
+    assert_equal from_get, [dom.at_css("form.lb-action-form").css("input[name]").map { |node| node["name"] }.sort, preview_section.text.squish]
+    assert_predicate snapshot_value, :present?
+  end
+
+  def test_preview_post_without_the_permission_is_403
+    # arrange
+    configure_actions
+    role_action
+    account = create_account
+
+    # act
+    post "#{ACTIONS}/change_user_role/preview", params: { record_id: account.id, fields: { role: "coordinator" } }, headers: as(2)
+
+    # assert
+    assert_response :forbidden
+  end
+
+  def test_action_form_is_a_post_to_preview_with_no_manual_token_field
+    # arrange
+    configure_actions
+    role_action
+    account = create_account
+
+    # act
+    open_preview("change_user_role", { record_id: account.id })
+    form = dom.at_css("form.lb-action-form")
+
+    # assert
+    assert_equal "post", form["method"].downcase
+    assert form["action"].end_with?("/actions/change_user_role/preview")
+    assert_empty form.css("input[name=authenticity_token]")
+  end
+
   def test_new_with_values_shows_the_masked_preview
     # arrange
     configure_actions

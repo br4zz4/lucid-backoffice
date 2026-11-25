@@ -13,13 +13,25 @@ class BackofficeReleaseTest < Minitest::Test
     assert_operator Gem::Version.new(version), :>=, Gem::Version.new("0.4.0")
   end
 
-  def test_version_is_0_5_0
+  def test_version_is_0_5_1
     # arrange
     # act
     version = Lucid::Backoffice::VERSION
 
     # assert
-    assert_equal "0.5.0", version
+    assert_equal "0.5.1", version
+  end
+
+  def test_changelog_has_a_0_5_1_section_mentioning_preview
+    # arrange
+    changelog = File.read(File.join(ROOT, "CHANGELOG.md"))
+
+    # act
+    section = changelog[/^## 0\.5\.1\n(.*?)(?=^## |\z)/m, 1]
+
+    # assert
+    assert section, "CHANGELOG.md has no section for 0.5.1"
+    assert_includes section, "preview"
   end
 
   def test_changelog_has_the_breaking_section_in_0_5_0_mentioning_unlocked

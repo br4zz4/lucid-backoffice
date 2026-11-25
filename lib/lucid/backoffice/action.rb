@@ -238,10 +238,18 @@ module Lucid
       # keeps what was submitted only when it came listed in +unlocked+, the operator may reveal its category
       # and, for a hidden column, the new value is not blank.
       def with_locked_current(params, unlocked: [], operator: nil)
-        opened = Array(unlocked).map(&:to_s)
-        locked_names.each_with_object(params.to_h.with_indifferent_access) do |name, result|
-          result[name] = record.public_send(name) unless unlock_accepted?(name, opened, result[name], operator)
+        accepted = accepted_unlocks(params, unlocked: unlocked, operator: operator)
+        (locked_names - accepted).each_with_object(params.to_h.with_indifferent_access) do |name, result|
+          result[name] = record.public_send(name)
         end
+      end
+
+      # @return [Array<Symbol>] the locked fields whose submitted value is accepted: listed in +unlocked+, allowed
+      #   to this operator and, for a hidden column, not blank
+      def accepted_unlocks(params, unlocked: [], operator: nil)
+        opened = Array(unlocked).map(&:to_s)
+        submitted = params.to_h.with_indifferent_access
+        locked_names.select { |name| unlock_accepted?(name, opened, submitted[name], operator) }
       end
 
       # @return [Boolean] false when an +only_if+ fails: the action is not offered at all

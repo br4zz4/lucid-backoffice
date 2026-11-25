@@ -107,7 +107,7 @@ module Lucid
       def current_tenant
         return @current_tenant if defined?(@current_tenant)
 
-        @current_tenant = params[:tenant_id] ? (tenancy.find(params[:tenant_id]) || raise(Lucid::Backoffice::Records::NotFound, "no tenant")) : nil
+        @current_tenant = params[:tenant_id].presence ? (tenancy.find(params[:tenant_id]) || raise(Lucid::Backoffice::Records::NotFound, "no tenant")) : nil
       end
     end
   end
