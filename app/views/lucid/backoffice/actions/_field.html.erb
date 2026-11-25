@@ -1,6 +1,6 @@
 <% value = action.values.fetch(field.name) { initial[field.name] } %>
 <div class="lb-field">
-  <label for="fields_<%= field.name %>"><%= field.name.to_s.humanize %></label>
+  <label for="fields_<%= field.name %>"><%= field.title %></label>
   <% if value.equal?(Lucid::Backoffice::Action::Field::LOCKED) || local_assigns.fetch(:locked, []).include?(field.name) %>
     <% mode = action.unlock_mode(field.name) %>
     <% can_unlock = mode == :write || (mode == :read && allowed?(:reveal, { tenant: current_tenant, category: action.unlock_category(field.name) })) %>

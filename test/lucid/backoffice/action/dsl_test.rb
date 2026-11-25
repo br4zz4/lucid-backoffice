@@ -76,6 +76,39 @@ class ActionDslTest < ActionTest
     assert_equal [:string, true], [field.type, field.required]
   end
 
+  def test_field_title_is_the_string_label
+    # arrange
+    action_class = build_action { field :email, :string, label: "E-mail" }
+
+    # act
+    title = action_class.fields[:email].title
+
+    # assert
+    assert_equal "E-mail", title
+  end
+
+  def test_field_title_calls_a_callable_label
+    # arrange
+    action_class = build_action { field :email, :string, label: -> { "E-mail #{1 + 1}" } }
+
+    # act
+    title = action_class.fields[:email].title
+
+    # assert
+    assert_equal "E-mail 2", title
+  end
+
+  def test_field_title_without_label_is_the_humanized_name
+    # arrange
+    action_class = build_action { field :contact_email }
+
+    # act
+    title = action_class.fields[:contact_email].title
+
+    # assert
+    assert_equal "Contact email", title
+  end
+
   def test_fields_keep_declaration_order
     # arrange
     action_class = build_action do

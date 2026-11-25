@@ -2,7 +2,11 @@ module Lucid
   module Backoffice
     class Action
       # One input of an Action. The value is validated and coerced by its type.
-      Field = Data.define(:name, :type, :choices, :default, :of, :scope, :partial, :required) do
+      Field = Data.define(:name, :type, :choices, :default, :of, :scope, :partial, :required, :label) do
+        def initialize(label: nil, **attributes) = super
+
+        def title = (label.respond_to?(:call) ? label.call : label).presence || name.to_s.humanize
+
         TYPES = %i[string text integer boolean date select record].freeze
 
         # @return [Object] the coerced value
