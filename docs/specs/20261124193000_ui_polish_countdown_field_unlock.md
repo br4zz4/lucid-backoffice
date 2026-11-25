@@ -1,8 +1,8 @@
 ---
 title: Acabamento visual, contador da revelação e liberação de campo para edição
-status: proposed
+status: done
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-25
 owner: "@oporpino"
 certainty: high
 ---
@@ -321,41 +321,50 @@ Merge in this order: #46 #<pr1> #<pr2> #<pr3> #<pr4> #<pr5> #<pr6>
 
 # definition of done
 
-- [ ] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato)
-- [ ] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.test` no luneta)
-- [ ] Toda task do "how" executada
-- [ ] Documentação atualizada (`docs/security.md`, `docs/masking-and-reveals.md`, `docs/actions.md`, `CHANGELOG.md`; `docs/CONTEXT.md` e ADR 0002 já nesta spec)
-- [ ] Staging: merge na main do luneta feito e todas as rotas do ping respondem (gem: `staging: none`)
-- [ ] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes)
-- [ ] Último PR liga a funcionalidade e remove código temporário (PR 6 sobe o luneta; nenhum código temporário na gem)
-- [ ] PR #46 mergeado na `main` com CI verde
-- [ ] Cenário "item selecionado da sidebar sem borda nem barra": teste de `aria-current` em `layout_test.rb` e `grep` no CSS sem `box-shadow`/`border-color` nas regras de item atual; screenshot headless conferido
-- [ ] Cenário "nome de tabela longo cabe na sidebar": teste do `title` em `layout_test.rb`
-- [ ] Cenário "popover de filtro com rótulos": teste em `data_test.rb` (labels com `for` e submit "Aplicar filtro")
-- [ ] Cenário "busca envia com Enter": teste em `data_test.rb` (campo e botão no mesmo form, `svg` presente)
-- [ ] Cenário "contador parte dos segundos informados pelo servidor": teste de `data-lb-remaining`, `title` e texto sem JS em `reveal_eye_test.rb`; contagem verificada no dummy
-- [ ] Cenário "último minuto em âmbar": verificado no dummy com `reveal_duration = 70`
-- [ ] Cenário "fim do prazo com a página limpa": teste do DELETE sem ativas sem `flash[:notice]` em `reveal_eye_test.rb`; envio automático verificado no dummy
-- [ ] Cenário "fim do prazo com formulário editado": verificado no dummy (selo "Expirado" vermelho, células borradas, clique mascara sem aviso)
-- [ ] Cenário "o motivo do diálogo de revelar não conta como edição": verificado no dummy
-- [ ] Cenário "encerrar com revelação ativa mantém o aviso": teste em `reveal_eye_test.rb`
-- [ ] Cenário "valores revelados são marcados pelo servidor": testes em `data_test.rb` (lista, detalhe e link de FK)
-- [ ] Cenário "prévia de Ação usa o estado real do valor": testes em `actions_test.rb` e `preview_test.rb`
-- [ ] Cenário "chip de filtro sobre coluna revelada": teste em `data_test.rb`
-- [ ] Cenário "campo mascarado começa travado mesmo com revelação ativa": teste em `field_unlock_test.rb` (sem `name`, sem valor no HTML, botão presente)
-- [ ] Cenário "liberar um campo mascarado lê o valor e deixa evento": teste em `field_unlock_test.rb` (JSON, `no-store`, evento sem valor e sem motivo); liberação verificada no dummy
-- [ ] Cenário "liberar sem permissão de revelar": teste em `field_unlock_test.rb` (403, sem evento, sem botão)
-- [ ] Cenário "coluna secret ou oculta é só escrita": teste em `field_unlock_test.rb` (texto do botão, 403 no endpoint, sem evento); verificado no dummy
-- [ ] Cenário "liberar campo que não é travado": teste em `field_unlock_test.rb` (404)
-- [ ] Cenário "ao sair do campo liberado ele volta a mostrar pontos": verificado no dummy (pontos, olho, valor enviado)
-- [ ] Cenário "salvar um campo liberado": teste em `field_unlock_test.rb` (registro atualizado, `changed_fields` com "email", sem valor no evento)
-- [ ] Cenário "envio forjado de campo travado é descartado": teste em `field_unlock_test.rb`
-- [ ] Cenário "unlocked forjado sem permissão é descartado": teste em `field_unlock_test.rb`
-- [ ] Cenário "novo valor de secret em branco mantém o atual": teste em `field_test.rb`
-- [ ] Cenário "sem JavaScript": testes de HTML (selo com texto do servidor, campo travado sem `name`) e execução da Ação sem `unlocked[]` em `field_unlock_test.rb`
-- [ ] Cenário "luneta na v0.5.0": `make core.test` verde e tabela `rota | status | resultado` do ping de staging
-- [ ] Tag `v0.5.0` publicada (`git ls-remote --tags origin v0.5.0`)
-- [ ] Banner `FINISHED` impresso como última saída (`br4zz4:finish`, Step 7), só com todos os itens acima marcados
+- [x] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato)
+- [x] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.test` no luneta)
+- [x] Toda task do "how" executada
+- [x] Documentação atualizada (`docs/security.md`, `docs/masking-and-reveals.md`, `docs/actions.md`, `CHANGELOG.md`; `docs/CONTEXT.md` e ADR 0002 já nesta spec)
+- [x] Staging: merge na main do luneta feito e todas as rotas do ping respondem (gem: `staging: none`)
+- [x] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes)
+- [x] Último PR liga a funcionalidade e remove código temporário (PR 6 sobe o luneta; nenhum código temporário na gem)
+- [x] PR #46 mergeado na `main` com CI verde
+- [x] Cenário "item selecionado da sidebar sem borda nem barra": teste de `aria-current` em `layout_test.rb` e `grep` no CSS sem `box-shadow`/`border-color` nas regras de item atual; screenshot headless conferido
+- [x] Cenário "nome de tabela longo cabe na sidebar": teste do `title` em `layout_test.rb`
+- [x] Cenário "popover de filtro com rótulos": teste em `data_test.rb` (labels com `for` e submit "Aplicar filtro")
+- [x] Cenário "busca envia com Enter": teste em `data_test.rb` (campo e botão no mesmo form, `svg` presente)
+- [x] Cenário "contador parte dos segundos informados pelo servidor": teste de `data-lb-remaining`, `title` e texto sem JS em `reveal_eye_test.rb`; contagem verificada no dummy
+- [x] Cenário "último minuto em âmbar": verificado no dummy com `reveal_duration = 70`
+- [x] Cenário "fim do prazo com a página limpa": teste do DELETE sem ativas sem `flash[:notice]` em `reveal_eye_test.rb`; envio automático verificado no dummy
+- [x] Cenário "fim do prazo com formulário editado": verificado no dummy (selo "Expirado" vermelho, células borradas, clique mascara sem aviso)
+- [x] Cenário "o motivo do diálogo de revelar não conta como edição": verificado no dummy
+- [x] Cenário "encerrar com revelação ativa mantém o aviso": teste em `reveal_eye_test.rb`
+- [x] Cenário "valores revelados são marcados pelo servidor": testes em `data_test.rb` (lista, detalhe e link de FK)
+- [x] Cenário "prévia de Ação usa o estado real do valor": testes em `actions_test.rb` e `preview_test.rb`
+- [x] Cenário "chip de filtro sobre coluna revelada": teste em `data_test.rb`
+- [x] Cenário "campo mascarado começa travado mesmo com revelação ativa": teste em `field_unlock_test.rb` (sem `name`, sem valor no HTML, botão presente)
+- [x] Cenário "liberar um campo mascarado lê o valor e deixa evento": teste em `field_unlock_test.rb` (JSON, `no-store`, evento sem valor e sem motivo); liberação verificada no dummy
+- [x] Cenário "liberar sem permissão de revelar": teste em `field_unlock_test.rb` (403, sem evento, sem botão)
+- [x] Cenário "coluna secret ou oculta é só escrita": teste em `field_unlock_test.rb` (texto do botão, 403 no endpoint, sem evento); verificado no dummy
+- [x] Cenário "liberar campo que não é travado": teste em `field_unlock_test.rb` (404)
+- [x] Cenário "ao sair do campo liberado ele volta a mostrar pontos": verificado no dummy (pontos, olho, valor enviado)
+- [x] Cenário "salvar um campo liberado": teste em `field_unlock_test.rb` (registro atualizado, `changed_fields` com "email", sem valor no evento)
+- [x] Cenário "envio forjado de campo travado é descartado": teste em `field_unlock_test.rb`
+- [x] Cenário "unlocked forjado sem permissão é descartado": teste em `field_unlock_test.rb`
+- [x] Cenário "novo valor de secret em branco mantém o atual": teste em `field_test.rb`
+- [x] Cenário "sem JavaScript": testes de HTML (selo com texto do servidor, campo travado sem `name`) e execução da Ação sem `unlocked[]` em `field_unlock_test.rb`
+- [x] Cenário "luneta na v0.5.0": `make core.test` verde e tabela `rota | status | resultado` do ping de staging
+- [x] Tag `v0.5.0` publicada (`git ls-remote --tags origin v0.5.0`)
+- [x] Banner `FINISHED` impresso como última saída (`br4zz4:finish`, Step 7), só com todos os itens acima marcados
+
+### Evidência
+
+- Gem: PRs #46, #50, #51, #52, #53, #54 e #55 mergeados na `main` com CI verde (macOS 3.4, Ubuntu 3.2 e 3.4); suíte local 1151 runs, 0 falhas; tags `v0.5.0` e `v0.5.1` publicadas (`git ls-remote --tags origin`).
+- Review (reviewer, `f78e101...main`): REJEITADO com 2 [CRÍTICO] (edição liberada perdida na volta da prévia GET; valores e token CSRF na URL) e 3 [MAJOR]; corrigidos no #55 (prévia `POST /actions/:key/preview`, campo liberado volta aberto, `lbDirty` com select, foco no macOS, DELETE único, aria) com testes do fluxo prévia→execução pelo DOM, CSRF do unlock e fail-closed. O bug antigo do `tenant_id` vazio (404) foi corrigido junto, com teste. Achado MINOR fora do escopo: issue "Unlock: forged unlocked[] skips the unlock endpoint and its event".
+- Comportamento no navegador (contador, âmbar, DELETE em zero, "Expirado" com borrão, liberar, ocultar ao sair) verificado em Chrome headless com tempo virtual sobre o HTML/JS/CSS reais; não foi exercitado no app dummy nem logado em staging.
+- Luneta: #217 (v0.5.0) e #222 (v0.5.1) mergeados, `make core.test` 1651 runs, 0 falhas; deploy `staging · core.2026-11-24.042` ok, assets servidos com `lb-expired` e `aria-pressed`.
+- Ping staging (`https://staging.lunetamagica.com.br`): `/up` 200; `/backoffice`, `/backoffice/data/users`, `/backoffice/data/organizations`, `/backoffice/actions/create_users/new` 302 para login (exige auth).
+- Divergência da spec: o release saiu como 0.5.0 + 0.5.1 (correções do review); o formulário de Ação usa prévia POST, não GET.
 
 ## documentation
 
