@@ -1219,6 +1219,122 @@ class DataIntegrationTest < PanelTest
     assert_equal "Apply filter", I18n.t(key, locale: :en)
   end
 
+  def list_cell_nodes(column)
+    index = dom.css("thead th").index { |th| th.children.first.text.strip == column }
+    dom.css("tbody tr").first.css("td")[index].css(".lb-value")
+  end
+
+  def detail_cell_nodes(column)
+    term = dom.css("dt").find { |dt| dt.children.first.text.strip == column }
+    term.next_element.css(".lb-value")
+  end
+
+  def test_list_marks_revealed_values_and_only_those
+    # arrange
+    classify_and_reveal
+    insert_student
+
+    # act
+    get LIST, headers: as(1)
+    contact = list_cell_nodes("email")
+    public_cell = list_cell_nodes("owner_type")
+    documents = list_cell_nodes("cpf")
+
+    # assert
+    refute_empty contact
+    assert contact.all? { |node| node.key?("data-lb-revealed") }
+    refute_empty public_cell
+    refute public_cell.any? { |node| node.key?("data-lb-revealed") }
+    refute_empty documents
+    assert documents.all? { |node| node["class"].split.include?("lb-masked") && !node.key?("data-lb-revealed") }
+  end
+
+  def test_detail_marks_revealed_values_and_only_those
+    # arrange
+    classify_and_reveal
+    insert_student
+
+    # act
+    get "/backoffice/data/students/1", headers: as(1)
+    contact = detail_cell_nodes("email")
+    public_cell = detail_cell_nodes("owner_type")
+    documents = detail_cell_nodes("cpf")
+
+    # assert
+    refute_empty contact
+    assert contact.all? { |node| node.key?("data-lb-revealed") }
+    refute_empty public_cell
+    refute public_cell.any? { |node| node.key?("data-lb-revealed") }
+    refute_empty documents
+    assert documents.all? { |node| node["class"].split.include?("lb-masked") && !node.key?("data-lb-revealed") }
+  end
+
+  def test_nothing_is_marked_as_revealed_without_a_reveal
+    # arrange
+    classify_and_reveal(reveal: false)
+    insert_student
+
+    # act
+    get LIST, headers: as(1)
+    in_list = dom.css("[data-lb-revealed]")
+    get "/backoffice/data/students/1", headers: as(1)
+    in_detail = dom.css("[data-lb-revealed]")
+
+    # assert
+    assert_empty in_list
+    assert_empty in_detail
+  end
+
+  def test_foreign_key_link_over_a_revealed_column_is_marked
+    # arrange
+    path = write_yaml("students:\n  tutor: contact\n")
+    configure_panel(permissions: { 1 => %i[browse reveal view_activity] }) { |config| config.classification_path = path }
+    Lucid::Backoffice::Reveal.grant(operator: PanelOperator.new(1), category: "contact", reason: "investigar chamado 123")
+    link_fixture
+    connection.execute("ALTER TABLE public.students ADD COLUMN tutor bigint REFERENCES public.guardians (id)")
+    insert_student(tutor: 43)
+
+    # act
+    get LIST, headers: as(1)
+    list_link = dom.at_css("tbody a[href$='/guardians/43']")
+    get "/backoffice/data/students/1", headers: as(1)
+    detail_link = dom.at_css("dd a[href$='/guardians/43']")
+
+    # assert
+    assert list_link.key?("data-lb-revealed")
+    assert detail_link.key?("data-lb-revealed")
+  end
+
+  def test_foreign_key_link_over_a_public_column_is_not_marked
+    # arrange
+    classify_and_reveal
+    link_fixture
+    insert_student(guardian_id: 42)
+
+    # act
+    get LIST, headers: as(1)
+    list_link = dom.at_css("tbody a[href$='/guardians/42']")
+
+    # assert
+    assert list_link
+    refute list_link.key?("data-lb-revealed")
+  end
+
+  def test_filter_chip_over_a_revealed_column_is_marked_and_over_a_public_column_is_not
+    # arrange
+    classify_and_reveal
+    insert_student(email: "alvo@x.test")
+
+    # act
+    run_query(criteria: { filters: { email: "alvo@x.test", guardian_id: "42" } })
+    chips = dom.css(".lb-chip").to_h { |chip| [chip.text.include?("email") ? "email" : "guardian_id", chip.at_css("span")] }
+
+    # assert
+    assert_equal %w[email guardian_id], chips.keys.sort
+    assert chips["email"].key?("data-lb-revealed")
+    refute chips["guardian_id"].key?("data-lb-revealed")
+  end
+
   def test_query_bar_has_no_duplicate_ids
     # arrange
     classify_and_reveal

@@ -4,8 +4,8 @@ module Lucid
     # from a parameter, and values leave already masked.
     module Records
       Page = Data.define(:columns, :rows, :page, :pages, :total, :ignored_filters)
-      Cell = Data.define(:column, :value, :masked, :link) do
-        def initialize(column:, value:, masked:, link: nil) = super
+      Cell = Data.define(:column, :value, :masked, :link, :revealed) do
+        def initialize(column:, value:, masked:, link: nil, revealed: false) = super
       end
       Related = Data.define(:table, :column, :count)
 
@@ -101,7 +101,7 @@ module Lucid
           masked = !open && column.category != Classification::PUBLIC
           target = references[column.name]
           link = { table: target, id: row[column.name] } if target && !masked && !row[column.name].nil?
-          Cell.new(column: column, value: value, masked: masked, link: link)
+          Cell.new(column: column, value: value, masked: masked, link: link, revealed: open && column.category != Classification::PUBLIC)
         end
       end
 

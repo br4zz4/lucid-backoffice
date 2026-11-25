@@ -1,7 +1,9 @@
 <section class="lb-section">
   <h2><%= t("lucid_backoffice.preview") %></h2>
   <% changes.each do |change| %>
-    <p><strong><%= change.label %></strong>: <span class="lb-value lb-masked"><%= change.before %></span> → <span class="lb-value lb-masked"><%= change.after %></span></p>
+    <% shield = change.category != Lucid::Backoffice::Classification::PUBLIC && !change.revealed %>
+    <% attributes = change.revealed ? raw(" data-lb-revealed") : "" %>
+    <p><strong><%= change.label %></strong>: <span class="lb-value<%= " lb-masked" if shield %>"<%= attributes %>><%= change.before %></span> → <span class="lb-value<%= " lb-masked" if shield %>"<%= attributes %>><%= change.after %></span></p>
   <% end %>
   <% listings.each do |listing| %>
     <h3><%= listing.title %></h3>
