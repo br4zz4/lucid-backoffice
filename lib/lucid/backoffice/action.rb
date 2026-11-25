@@ -91,9 +91,9 @@ module Lucid
           value.nil? ? (@transaction.nil? ? true : @transaction) : @transaction = value
         end
 
-        def field(name, type = :string, choices: nil, default: nil, of: nil, scope: nil, partial: nil, required: true)
+        def field(name, type = :string, choices: nil, default: nil, of: nil, scope: nil, partial: nil, required: true, label: nil)
           fields[name.to_sym] = Field.new(name: name.to_sym, type: type, choices: choices, default: default, of: of, scope: scope,
-                                          partial: partial, required: required)
+                                          partial: partial, required: required, label: label)
           define_method(name) { values[name.to_sym] }
         end
 
