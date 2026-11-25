@@ -87,3 +87,58 @@ document.addEventListener("DOMContentLoaded", function () {
     tick();
   });
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+  var eye = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+  document.querySelectorAll("[data-lb-unlock]").forEach(function (box) {
+    var button = box.querySelector("[data-lb-unlock-button]");
+    var template = box.querySelector("template[data-lb-control]");
+    var field = box.getAttribute("data-lb-field");
+    var label = button.querySelector("[data-lb-label]");
+    var icon = button.querySelector("svg");
+    var control = null;
+    var failure = null;
+
+    var conceal = function (on) {
+      box.classList.toggle("lb-concealed", on);
+      label.textContent = button.getAttribute(on ? "data-lb-show" : "data-lb-hide");
+    };
+
+    var open = function (value) {
+      var fragment = template.content.cloneNode(true);
+      control = fragment.querySelector("input, textarea, select");
+      if (value !== null && value !== undefined) {
+        if (control.type === "checkbox") { control.checked = !!value; } else { control.value = value; }
+      }
+      box.replaceChild(fragment, box.querySelector("input:disabled"));
+      var flag = document.createElement("input");
+      flag.type = "hidden"; flag.name = "unlocked[]"; flag.value = field;
+      box.appendChild(flag);
+      icon.innerHTML = eye;
+      button.onclick = function () { conceal(!box.classList.contains("lb-concealed")); if (!box.classList.contains("lb-concealed")) { control.focus(); } };
+      box.addEventListener("focusout", function (event) {
+        if (!box.contains(event.relatedTarget)) { conceal(true); }
+      });
+      conceal(false);
+      control.focus();
+    };
+
+    button.onclick = function () {
+      if (failure) { failure.remove(); failure = null; }
+      var url = box.getAttribute("data-lb-unlock-url");
+      if (!url) { open(""); return; }
+      var token = document.querySelector('meta[name="csrf-token"]');
+      button.disabled = true;
+      fetch(url, { method: "POST", credentials: "same-origin", headers: { "Accept": "application/json", "X-CSRF-Token": token ? token.content : "" } })
+        .then(function (response) { if (!response.ok) { throw new Error(response.status); } return response.json(); })
+        .then(function (data) { open(data.value); })
+        .catch(function () {
+          failure = document.createElement("small");
+          failure.className = "lb-unlock-failed";
+          failure.textContent = button.getAttribute("data-lb-failed");
+          box.appendChild(failure);
+        })
+        .finally(function () { button.disabled = false; });
+    };
+  });
+});

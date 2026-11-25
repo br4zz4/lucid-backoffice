@@ -10,8 +10,24 @@ module Lucid
         tenancy.with(current_tenant) do
           @record = find_record
           @action = @action_class.new(record: @record, tenant: current_tenant, params: field_params)
-          @initial = @action.initial_values(revealed: revealed_categories)
+          @initial = @action.initial_values
           prepare_preview
+        end
+      end
+
+      def unlock
+        authorize!(@action_class.permission, context)
+        field = params[:field].to_s
+        tenancy.with(current_tenant) do
+          record = find_record
+          action = @action_class.new(record: record, tenant: current_tenant)
+          raise Records::NotFound, "no such field" unless action.unlock_mode(field)
+          raise Error::Forbidden, "not allowed to unlock" unless action.unlock_mode(field) == :read && allowed?(:reveal, { tenant: current_tenant, category: action.unlock_category(field) })
+
+          Activity.record(name: "backoffice.field.unlock", subjects: [{ "type" => "Table", "name" => @action_class.target.to_s, "id" => record.id }],
+                          payload: { column: field, action: @action_class.key.to_s })
+          response.headers["Cache-Control"] = "no-store"
+          render json: { value: record.public_send(field) }
         end
       end
 
@@ -21,7 +37,7 @@ module Lucid
         result = tenancy.with(current_tenant) do
           Action::Runner.call(@action_class, operator: current_operator, reason: params[:reason], snapshot: params[:snapshot].to_s,
                               record: find_record, tenant: current_tenant, params: field_params, confirmation: params[:confirmation],
-                              revealed: revealed_categories, submit: params[:submit])
+                              unlocked: unlocked_params, submit: params[:submit])
         end
         if result.ok?
           return render_secret(result) if result.secret.present?
@@ -47,6 +63,10 @@ module Lucid
 
       def context
         { tenant: current_tenant, action: @action_class.key }
+      end
+
+      def unlocked_params
+        Array(params[:unlocked]).map(&:to_s)
       end
 
       def field_params
@@ -116,12 +136,12 @@ module Lucid
       end
 
       def prepare_preview
-        @locked = @action.locked_names(revealed: revealed_categories)
+        @locked = @action.locked_names
         @reason = @action.unavailable_reason
         return if @reason
         return unless params.key?(:fields) || @action_class.fields.empty?
 
-        submitted = @action.with_locked_current(field_params, revealed: revealed_categories).symbolize_keys.compact_blank
+        submitted = @action.with_locked_current(field_params, unlocked: unlocked_params, operator: current_operator).symbolize_keys.compact_blank
         values = @initial.reject { |_name, value| value.equal?(Action::Field::LOCKED) }.merge(submitted)
         @action = @action_class.new(record: @record, tenant: current_tenant, params: values).prepare!
         preview = @action.build_preview
@@ -137,7 +157,7 @@ module Lucid
         tenancy.with(current_tenant) do
           @record = find_record
           @action = @action_class.new(record: @record, tenant: current_tenant, params: field_params)
-          @initial = @action.initial_values(revealed: revealed_categories)
+          @initial = @action.initial_values
           prepare_preview
         end
         render :new, status: :unprocessable_entity

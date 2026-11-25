@@ -168,7 +168,7 @@ class AccessIntegrationTest < PanelTest
 
     # assert
     expected = [["POST", "/reveals"], ["DELETE", "/reveals"], ["POST", "/actions/:action_key"],
-                ["POST", "/data/:table/query"], ["POST", "/tenants/:tenant_id/data/:table/query"]]
+                ["POST", "/actions/:action_key/fields/:field/unlock"], ["POST", "/data/:table/query"], ["POST", "/tenants/:tenant_id/data/:table/query"]]
     assert_equal expected.sort, writing.sort
   end
 

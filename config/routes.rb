@@ -8,6 +8,7 @@ Lucid::Backoffice::Engine.routes.draw do
   delete "reveals", to: "reveals#destroy_all", as: :reveals_all
   get "actions/:action_key/new", to: "actions#new", as: :new_action
   post "actions/:action_key", to: "actions#create", as: :run_action
+  post "actions/:action_key/fields/:field/unlock", to: "actions#unlock", as: :unlock_action_field
 
   scope "tenants/:tenant_id", constraints: { tenant_id: %r{[^/]+} } do
     get "/", to: "tenants#show", as: :tenant

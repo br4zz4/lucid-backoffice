@@ -46,6 +46,7 @@ class ActionTest < ActivityTest
   end
 
   REASON = "support ticket 1234".freeze
+  UNLOCKED_BY_DEFAULT = %w[role name].freeze
   CLASSIFICATION = <<~YAML.freeze
     accounts:
       role: contact
@@ -65,7 +66,7 @@ class ActionTest < ActivityTest
     Lucid::Backoffice::Current.reset
   end
 
-  def configure_actions(permissions: %i[run_action])
+  def configure_actions(permissions: %i[run_action reveal])
     path = write_yaml(CLASSIFICATION)
     configure_minimal do |config|
       config.classification_path = path
@@ -97,10 +98,10 @@ class ActionTest < ActivityTest
     action_class.new(record: record, tenant: tenant, params: params).prepare!.build_preview.snapshot
   end
 
-  def run_action(action_class, record: nil, tenant: nil, params: {}, reason: REASON, snapshot: :auto, operator: Operator.new(1), revealed: %w[contact], **options)
+  def run_action(action_class, record: nil, tenant: nil, params: {}, reason: REASON, snapshot: :auto, operator: Operator.new(1), unlocked: UNLOCKED_BY_DEFAULT, **options)
     snapshot = snapshot_for(action_class, record: record, tenant: tenant, params: params) if snapshot == :auto
     Runner.call(action_class, operator: operator, reason: reason, snapshot: snapshot, record: record, tenant: tenant, params: params,
-                              revealed: revealed, **options)
+                              unlocked: unlocked, **options)
   end
 
   def action_events(name = nil)

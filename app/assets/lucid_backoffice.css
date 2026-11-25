@@ -244,6 +244,12 @@
 .lb-action-form h2, .lb-action-form h3 { margin: .5rem 0 0; }
 
 .lb-expired [data-lb-revealed] { filter: blur(6px); user-select: none; pointer-events: none; }
+.lb-locked-field { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.lb-locked-field > input, .lb-locked-field > textarea, .lb-locked-field > select { flex: 1 1 14rem; width: auto; }
+.lb-unlock { flex: none; padding: .45rem .9rem; font-size: .82rem; }
+.lb-unlock svg { width: .95rem; height: .95rem; }
+.lb-unlock-failed { flex-basis: 100%; color: var(--lb-danger); text-transform: none; letter-spacing: 0; font-family: var(--lb-font-sans); font-size: .8rem; }
+.lb-locked-field.lb-concealed > input:not([type=hidden]), .lb-locked-field.lb-concealed > textarea, .lb-locked-field.lb-concealed > select { color: transparent; text-shadow: none; background: radial-gradient(circle 1.6px at 50% 50%, var(--lb-muted) 96%, transparent) .9rem 0 / .62rem 100% repeat-x, rgb(255 255 255 / .04); caret-color: transparent; pointer-events: none; }
 .lb-query { gap: .6rem; }
 .lb-query-form { align-items: center; }
 .lb-search { position: relative; display: block; }

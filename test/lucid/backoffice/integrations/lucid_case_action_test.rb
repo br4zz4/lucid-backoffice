@@ -102,7 +102,7 @@ class LucidCaseActionTest < ActionTest
     snapshot = snapshot_for(action, record: account, params: { role: "teacher" })
 
     # act
-    result = run_action(action, record: account, params: { role: "coordinator" }, snapshot: snapshot, revealed: [])
+    result = run_action(action, record: account, params: { role: "coordinator" }, snapshot: snapshot, unlocked: [])
 
     # assert
     assert_equal [:ok, "teacher"], [result.status, account.reload.role]
@@ -115,7 +115,7 @@ class LucidCaseActionTest < ActionTest
     action = command_action(Accounts::ChangeRole)
 
     # act
-    result = run_action(action, record: account, params: { role: "coordinator" }, revealed: %w[contact])
+    result = run_action(action, record: account, params: { role: "coordinator" }, unlocked: %w[role])
 
     # assert
     assert_equal [:ok, "coordinator"], [result.status, account.reload.role]

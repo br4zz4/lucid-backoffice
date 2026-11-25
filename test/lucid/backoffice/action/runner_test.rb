@@ -179,7 +179,7 @@ class ActionRunnerTest < ActionTest
     tenant = { slug: "school_a" }
 
     # act
-    run_action(role_action, record: account, tenant: tenant, params: { role: "coordinator" }, operator: operator)
+    run_action(role_action, record: account, tenant: tenant, params: { role: "coordinator" }, operator: operator, unlocked: [])
 
     # assert
     assert_equal [operator, :run_action, { tenant: tenant, record: account, action: "change_user_role" }], received
@@ -187,7 +187,7 @@ class ActionRunnerTest < ActionTest
 
   def test_custom_permission_is_the_one_asked
     # arrange
-    configure_actions(permissions: %i[rewrite])
+    configure_actions(permissions: %i[rewrite reveal])
     account = create_account
     action_class = role_action { permission :rewrite }
 

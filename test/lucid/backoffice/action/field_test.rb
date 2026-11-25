@@ -286,13 +286,17 @@ class ActionFieldTest < ActionTest
   def test_initial_values_take_the_current_value_of_the_attribute_named_like_the_field
     # arrange
     configure_actions
-    action = role_action.new(record: create_account(role: "teacher"), params: {})
+    action_class = build_action do
+      on :accounts
+      field :nickname, :string
+    end
+    action = action_class.new(record: create_account(nickname: "Mia"), params: {})
 
     # act
-    values = action.initial_values(revealed: %w[contact])
+    values = action.initial_values
 
     # assert
-    assert_equal({ role: "teacher" }, values)
+    assert_equal({ nickname: "Mia" }, values)
   end
 
   def test_initial_values_use_the_declared_default_when_the_attribute_is_nil
@@ -376,17 +380,17 @@ class ActionFieldTest < ActionTest
     configure_actions
     action_class = build_action do
       on :accounts
-      field :role, :string
+      field :nickname, :string
       field :level, :integer
       field :extra, :string
     end
-    action = action_class.new(record: create_account(role: "teacher", level: 3))
+    action = action_class.new(record: create_account(nickname: "Mia", level: 3))
 
     # act
-    values = action.initial_values(revealed: %w[contact])
+    values = action.initial_values
 
     # assert
-    assert_equal({ role: "teacher", level: 3, extra: nil }, values)
+    assert_equal({ nickname: "Mia", level: 3, extra: nil }, values)
   end
 
   def test_initial_values_lock_a_field_over_a_masked_column
@@ -402,28 +406,28 @@ class ActionFieldTest < ActionTest
     refute_includes values.values.map(&:to_s), "teacher"
   end
 
-  def test_initial_values_unlock_a_field_when_its_category_is_revealed
+  def test_initial_values_no_longer_take_the_revealed_categories
     # arrange
     configure_actions
     action = role_action.new(record: create_account(role: "teacher"), params: {})
 
     # act
-    values = action.initial_values(revealed: %w[contact])
+    error = assert_raises(ArgumentError) { action.initial_values(revealed: %w[contact]) }
 
     # assert
-    assert_equal({ role: "teacher" }, values)
+    assert_kind_of ArgumentError, error
   end
 
-  def test_initial_values_stay_locked_when_another_category_is_revealed
+  def test_locked_names_no_longer_take_the_revealed_categories
     # arrange
     configure_actions
     action = role_action.new(record: create_account(role: "teacher"), params: {})
 
     # act
-    values = action.initial_values(revealed: %w[free_text])
+    error = assert_raises(ArgumentError) { action.locked_names(revealed: %w[contact]) }
 
     # assert
-    assert_same Action::Field::LOCKED, values[:role]
+    assert_kind_of ArgumentError, error
   end
 
   def test_initial_values_lock_nothing_without_a_record
@@ -446,7 +450,7 @@ class ActionFieldTest < ActionTest
 
     # act
     snapshot = snapshot_for(action_class, record: account, params: { role: "teacher" })
-    result = run_action(action_class, record: account, params: { role: "coordinator" }, snapshot: snapshot, revealed: [])
+    result = run_action(action_class, record: account, params: { role: "coordinator" }, snapshot: snapshot, unlocked: [])
 
     # assert
     assert_equal [:ok, "teacher"], [result.status, account.reload.role]
@@ -463,23 +467,51 @@ class ActionFieldTest < ActionTest
 
     # act
     snapshot = snapshot_for(action_class, record: account, params: { role: "teacher" })
-    result = run_action(action_class, record: account, params: { role: "coordinator" }, snapshot: snapshot, revealed: [])
+    result = run_action(action_class, record: account, params: { role: "coordinator" }, snapshot: snapshot, unlocked: [])
 
     # assert
     assert_equal [:ok, ["teacher"]], [result.status, seen]
   end
 
-  def test_runner_accepts_the_submitted_value_when_the_category_is_revealed
+  def test_runner_discards_the_submitted_value_when_the_category_is_revealed_but_the_field_is_not_unlocked
     # arrange
-    configure_actions
+    configure_actions(permissions: %i[run_action reveal])
     account = create_account(role: "teacher")
     action_class = role_action
 
     # act
-    result = run_action(action_class, record: account, params: { role: "coordinator" }, revealed: %w[contact])
+    snapshot = snapshot_for(action_class, record: account, params: { role: "teacher" })
+    result = run_action(action_class, record: account, params: { role: "coordinator" }, snapshot: snapshot, unlocked: [])
+
+    # assert
+    assert_equal [:ok, "teacher"], [result.status, account.reload.role]
+  end
+
+  def test_runner_accepts_the_submitted_value_when_the_field_is_unlocked_and_the_operator_may_reveal
+    # arrange
+    configure_actions(permissions: %i[run_action reveal])
+    account = create_account(role: "teacher")
+    action_class = role_action
+
+    # act
+    result = run_action(action_class, record: account, params: { role: "coordinator" }, unlocked: %w[role])
 
     # assert
     assert_equal [:ok, "coordinator"], [result.status, account.reload.role]
+  end
+
+  def test_runner_discards_an_unlocked_value_when_the_operator_may_not_reveal
+    # arrange
+    configure_actions(permissions: %i[run_action])
+    account = create_account(role: "teacher")
+    action_class = role_action
+
+    # act
+    snapshot = snapshot_for(action_class, record: account, params: { role: "teacher" })
+    result = run_action(action_class, record: account, params: { role: "coordinator" }, snapshot: snapshot, unlocked: %w[role])
+
+    # assert
+    assert_equal [:ok, "teacher"], [result.status, account.reload.role]
   end
 
   def test_initial_values_do_not_make_a_required_field_optional
@@ -517,14 +549,14 @@ class ActionFieldTest < ActionTest
     end
   end
 
-  def test_secret_column_stays_locked_even_with_every_category_revealed
+  def test_secret_column_is_locked
     # arrange
     configure_actions
     gadget = Gadget.create!(name: "Torno", kind: "k", secret_code: "SEGREDO-ATUAL")
     action = gadget_code_action.new(record: gadget, params: {})
 
     # act
-    values = action.initial_values(revealed: %w[contact free_text documents])
+    values = action.initial_values
 
     # assert
     assert_same Action::Field::LOCKED, values[:secret_code]
@@ -532,7 +564,7 @@ class ActionFieldTest < ActionTest
     refute_includes values.values.map(&:to_s), "SEGREDO-ATUAL"
   end
 
-  def test_resource_hidden_column_stays_locked_even_with_every_category_revealed
+  def test_resource_hidden_column_is_locked
     # arrange
     configure_actions
     Class.new(Lucid::Backoffice::Resource) do
@@ -543,7 +575,7 @@ class ActionFieldTest < ActionTest
     action = gadget_code_action.new(record: gadget, params: {})
 
     # act
-    values = action.initial_values(revealed: %w[contact free_text documents])
+    values = action.initial_values
 
     # assert
     assert_same Action::Field::LOCKED, values[:kind]
@@ -552,7 +584,7 @@ class ActionFieldTest < ActionTest
     Lucid::Backoffice::Resource.reset!
   end
 
-  def test_runner_keeps_the_current_value_of_a_hidden_column_even_when_revealed
+  def test_runner_keeps_the_current_value_of_a_hidden_column_that_is_not_unlocked
     # arrange
     configure_actions
     gadget = Gadget.create!(name: "Torno", kind: "k", secret_code: "SEGREDO-ATUAL")
@@ -560,10 +592,37 @@ class ActionFieldTest < ActionTest
 
     # act
     snapshot = snapshot_for(action_class, record: gadget, params: { name: "Novo" })
-    result = run_action(action_class, record: gadget, params: { name: "Novo", secret_code: "INVADIDO" }, snapshot: snapshot, revealed: %w[contact])
+    result = run_action(action_class, record: gadget, params: { name: "Novo", secret_code: "INVADIDO" }, snapshot: snapshot, unlocked: %w[name])
 
     # assert
     assert_equal [:ok, "Novo", "SEGREDO-ATUAL"], [result.status, gadget.reload.name, gadget.secret_code]
+  end
+
+  def test_runner_writes_a_new_value_for_an_unlocked_secret_column
+    # arrange
+    configure_actions
+    gadget = Gadget.create!(name: "Torno", kind: "k", secret_code: "SEGREDO-ATUAL")
+    action_class = gadget_code_action
+
+    # act
+    result = run_action(action_class, record: gadget, params: { name: "Torno", secret_code: "NOVO-SEGREDO" }, unlocked: %w[secret_code])
+
+    # assert
+    assert_equal [:ok, "NOVO-SEGREDO"], [result.status, gadget.reload.secret_code]
+  end
+
+  def test_runner_keeps_the_current_secret_when_the_unlocked_value_is_blank
+    # arrange
+    configure_actions
+    gadget = Gadget.create!(name: "Torno", kind: "k", secret_code: "SEGREDO-ATUAL")
+    action_class = gadget_code_action
+
+    # act
+    snapshot = snapshot_for(action_class, record: gadget, params: { name: "Torno" })
+    result = run_action(action_class, record: gadget, params: { name: "Torno", secret_code: "" }, snapshot: snapshot, unlocked: %w[secret_code])
+
+    # assert
+    assert_equal [:ok, "SEGREDO-ATUAL"], [result.status, gadget.reload.secret_code]
   end
 
   def test_label_accepts_a_callable_resolved_on_each_read
