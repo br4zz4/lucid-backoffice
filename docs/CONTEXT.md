@@ -29,7 +29,12 @@ _Avoid_: unmask, unlock.
 
 **Record action** — an Action derived from a Resource declaration (`creatable`, `editable`, `destroyable`) instead of written by hand. Same guarantees as any Action.
 
-**Locked field** — a form field over a masked column: shown as dots, disabled, never submitted. Revealing its category turns it into a normal input with the current value.
+**Locked field** — a form field over a column that is not `public`: shown as dots, disabled, never submitted. A Reveal does not open it; only the operator unlocking that one field does. Forms are independent of the Reveal and its deadline.
+
+**Unlocked field** — a locked field the operator opened, one at a time, to edit it. Over a masked column, unlocking reads the current value (needs the permission to reveal that category and leaves an event, no reason); over a hidden column it only lets a new value be written, the current one is never read. It stays open while the page is open and shows dots again when the operator leaves it.
+_Avoid_: revealed field.
+
+**Reveal deadline** — when the operator's Reveal in the context ends. Reaching it masks the page again without any notice; only when the operator has unsaved edits on the page does the eye say it expired, with what was displayed as revealed blurred until they mask it.
 
 **Collection action** — an Action on a table as a whole rather than on one of its records (e.g. creating a record); offered in the header of the table's list.
 
