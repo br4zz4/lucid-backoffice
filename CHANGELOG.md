@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+- **Feature:** an Action field takes `label:` (a String or a callable, so it can be translated); without it the label is still the humanized name.
+
 ## 0.5.1
 
 Fixes found reviewing 0.5.0.
