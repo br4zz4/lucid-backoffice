@@ -48,6 +48,7 @@ en:
     continue: Continue
     related: Related
     add_filter: "+ Filter"
+    apply_filter: "Apply filter"
     remove_filter: "Remove filter %{name}"
     filter_column: Column
     filter_value: Value

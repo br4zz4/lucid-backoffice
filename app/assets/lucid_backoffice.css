@@ -180,9 +180,9 @@
 .lb-list .lb-enter { margin-left: .6rem; padding: .2rem .8rem; font-size: .78rem; }
 
 .lb .lb-sidebar a.lb-brand { color: var(--lb-text); }
-.lb .lb-sidebar .lb-nav-main a, .lb .lb-sidebar .lb-nav-data a { display: flex; align-items: center; gap: .5rem; margin: 0 0 .15rem; padding: .5rem .75rem; border: 1px solid transparent; border-radius: 10px; color: var(--lb-muted); font-weight: 500; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lb .lb-sidebar .lb-nav-main a:hover, .lb .lb-sidebar .lb-nav-data a:hover { color: var(--lb-text); background: rgb(255 255 255 / .05); border-color: var(--lb-border); }
-.lb .lb-sidebar a[aria-current="page"] { color: var(--lb-text); background: var(--lb-raised); border-color: var(--lb-border); box-shadow: inset 2px 0 0 var(--lb-accent); }
+.lb .lb-sidebar .lb-nav-main a, .lb .lb-sidebar .lb-nav-data a { display: block; margin: 0; padding: .38rem .6rem; border: 0; border-radius: 6px; color: var(--lb-muted); font-size: .85rem; font-weight: 500; line-height: 1.35; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb .lb-sidebar .lb-nav-main a:hover, .lb .lb-sidebar .lb-nav-data a:hover { color: var(--lb-text); background: rgb(255 255 255 / .04); }
+.lb .lb-sidebar a[aria-current="page"] { color: var(--lb-text); background: rgb(255 255 255 / .06); }
 .lb .lb-context-leave, .lb .lb-context-switch summary { display: inline-block; padding: .3rem .7rem; border: 1px solid var(--lb-border); border-radius: 999px; color: var(--lb-text); font-size: .78rem; text-decoration: none; }
 .lb .lb-context-leave:hover, .lb .lb-context-switch summary:hover { border-color: rgb(255 255 255 / .3); }
 .lb-crumbs { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
@@ -202,7 +202,7 @@
 .lb-topbar { background: rgb(0 0 0 / .72); backdrop-filter: blur(14px) saturate(120%); -webkit-backdrop-filter: blur(14px) saturate(120%); padding-block: .85rem; }
 .lb-main { padding-top: 2.5rem; }
 .lb-main > h1 { margin-bottom: 1.5rem; }
-.lb-nav-data h3 { margin-top: .6rem; padding-top: 1rem; border-top: 1px solid var(--lb-border); }
+.lb-nav-data h3 { margin-top: .6rem; padding-top: 1rem; border-top: 1px solid var(--lb-border); font-family: var(--lb-font-sans); font-size: .69rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--lb-muted); }
 .lb-nav-main { padding-bottom: 0; }
 .lb-context { background: rgb(255 255 255 / .03); }
 .lb-context-in { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lb-accent) 12%, transparent), 0 12px 32px -16px color-mix(in srgb, var(--lb-accent) 30%, transparent); }
@@ -238,6 +238,21 @@
 .lb-action-form .lb-button:disabled { opacity: .6; }
 .lb-action-form h2, .lb-action-form h3 { margin: .5rem 0 0; }
 
+.lb-query { gap: .6rem; }
+.lb-query-form { align-items: center; }
+.lb-search { position: relative; display: block; }
+.lb-search svg { position: absolute; left: .85rem; top: 50%; width: 1rem; height: 1rem; transform: translateY(-50%); color: var(--lb-muted); pointer-events: none; }
+.lb .lb-search input[type=search] { padding-left: 2.4rem; min-width: 16rem; }
+.lb .lb-button.lb-button-quiet { background: transparent; color: var(--lb-text); border-color: var(--lb-border); box-shadow: none; }
+.lb .lb-button.lb-button-quiet:hover { border-color: rgb(255 255 255 / .3); filter: none; }
+.lb-menu > summary { box-shadow: none; }
+.lb-menu-list { display: grid; gap: .75rem; min-width: 18rem; padding: 1rem; border-radius: 16px; }
+.lb-menu-list .lb-field { display: flex; flex-direction: column; gap: .4rem; }
+.lb-menu-list input[type=text], .lb-menu-list select { width: 100%; }
+.lb-menu-list .lb-button { justify-content: center; }
+.lb-chip { gap: .4rem; padding: .2rem .35rem .2rem .7rem; background: rgb(255 255 255 / .04); color: var(--lb-muted); font-family: var(--lb-font-mono); font-size: .72rem; letter-spacing: .04em; }
+.lb-chip-remove { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 50%; color: var(--lb-muted); }
+.lb-chip-remove:hover { color: var(--lb-text); background: rgb(255 255 255 / .1); }
 .lb-button { padding: .6rem 1.3rem; box-shadow: 0 8px 24px -12px color-mix(in srgb, var(--lb-accent) 70%, transparent); }
 .lb-button:disabled, .lb-button[aria-disabled="true"], .lb-button-danger, .lb-button-ghost, .lb .lb-actions a.lb-button:not(.lb-button-danger) { box-shadow: none; }
 .lb-button:disabled { background: rgb(255 255 255 / .03); }

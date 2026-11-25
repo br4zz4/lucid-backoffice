@@ -30,7 +30,7 @@
       <h3><%= t("lucid_backoffice.data") %></h3>
       <% tables.each do |table| %>
         <% path = table_link(table) %>
-        <a class="lb-nav-table" href="<%= path %>"<%= raw ' aria-current="page"' if lb_current?(path, prefix: true) %>><%= table %></a>
+        <a class="lb-nav-table" title="<%= table %>" href="<%= path %>"<%= raw ' aria-current="page"' if lb_current?(path, prefix: true) %>><%= table %></a>
       <% end %>
     </nav>
   <% end %>

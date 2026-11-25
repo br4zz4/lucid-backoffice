@@ -313,6 +313,23 @@ class LayoutIntegrationTest < PanelTest
     assert_equal ["/backoffice/data/users_archive"], dom.css("aside.lb-sidebar [aria-current=page]").map { |a| a["href"] }
   end
 
+  def test_sidebar_table_links_carry_the_table_name_as_title
+    # arrange
+    configure_multi
+    long = "registro_de_matriculas_historico_anual"
+
+    # act
+    with_tables(long) do
+      get "/backoffice", headers: as(1)
+    end
+
+    # assert
+    links = dom.css("aside.lb-sidebar a.lb-nav-table")
+    assert_includes links.map { |a| a.text.strip }, long
+    refute_empty links
+    links.each { |a| assert_equal a.text.strip, a["title"] }
+  end
+
   def lb_current(path_info, target, **options)
     controller = Lucid::Backoffice::ApplicationController.new
     controller.request = ActionDispatch::TestRequest.create("PATH_INFO" => path_info, "SCRIPT_NAME" => "")

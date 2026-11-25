@@ -9,8 +9,11 @@
     <%= hidden_field_tag "criteria[sort]", query.sort, id: nil %>
     <%= hidden_field_tag "criteria[dir]", query.dir, id: nil %>
     <% def_filters.each do |name, value| %><%= hidden_field_tag "criteria[filters][#{name}]", value, id: nil %><% end %>
-    <%= search_field_tag "criteria[search]", query.search, id: nil, placeholder: t("lucid_backoffice.search"), "aria-label": t("lucid_backoffice.search") %>
-    <%= submit_tag t("lucid_backoffice.search"), name: nil, class: "lb-button" %>
+    <label class="lb-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <%= search_field_tag "criteria[search]", query.search, id: nil, placeholder: t("lucid_backoffice.search"), "aria-label": t("lucid_backoffice.search") %>
+    </label>
+    <%= submit_tag t("lucid_backoffice.search"), name: nil, class: "lb-button lb-button-quiet" %>
   <% end %>
   <% def_filters.each do |name, value| %>
     <%= form_with url: query_path, method: :post, class: "lb-chip" do %>
@@ -29,9 +32,15 @@
       <%= hidden_field_tag "criteria[sort]", query.sort, id: nil %>
       <%= hidden_field_tag "criteria[dir]", query.dir, id: nil %>
       <% def_filters.each do |name, value| %><%= hidden_field_tag "criteria[filters][#{name}]", value, id: nil %><% end %>
-      <%= select_tag :filter_column, options_for_select(usable.map(&:name)), "aria-label": t("lucid_backoffice.filter_column") %>
-      <%= text_field_tag :filter_value, nil, "aria-label": t("lucid_backoffice.filter_value") %>
-      <%= submit_tag t("lucid_backoffice.add_filter"), name: nil, class: "lb-button" %>
+      <div class="lb-field">
+        <label for="lb-filter-column"><%= t("lucid_backoffice.filter_column") %></label>
+        <%= select_tag :filter_column, options_for_select(usable.map(&:name)), id: "lb-filter-column" %>
+      </div>
+      <div class="lb-field">
+        <label for="lb-filter-value"><%= t("lucid_backoffice.filter_value") %></label>
+        <%= text_field_tag :filter_value, nil, id: "lb-filter-value" %>
+      </div>
+      <%= submit_tag t("lucid_backoffice.apply_filter"), name: nil, class: "lb-button" %>
     <% end %>
   </details>
 </div>
