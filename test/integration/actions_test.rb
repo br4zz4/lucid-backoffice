@@ -145,6 +145,24 @@ class ActionsIntegrationTest < PanelTest
     assert_equal "Mia", dom.at_css("select[name='fields[nickname]'] option[selected]")["value"]
   end
 
+  def test_new_renders_the_field_label_declared_with_label
+    # arrange
+    configure_actions
+    define_action("SendNotice") do
+      on :global
+      field :email, :string, label: "E-mail"
+      perform { nil }
+    end
+
+    # act
+    open_preview("send_notice", {})
+    label = dom.at_css("label[for=fields_email]")
+
+    # assert
+    assert_response :ok
+    assert_equal "E-mail", label.text.strip
+  end
+
   def test_new_shows_no_preview_until_values_are_submitted
     # arrange
     configure_actions
