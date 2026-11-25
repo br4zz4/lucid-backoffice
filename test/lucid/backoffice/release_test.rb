@@ -3,13 +3,13 @@ require "test_helper"
 class BackofficeReleaseTest < Minitest::Test
   ROOT = File.expand_path("../../..", __dir__)
 
-  def test_version_is_0_4_0
+  def test_version_is_0_4_1
     # arrange
     # act
     version = Lucid::Backoffice::VERSION
 
     # assert
-    assert_equal "0.4.0", version
+    assert_equal "0.4.1", version
   end
 
   def test_changelog_has_the_breaking_section_in_0_4_0
